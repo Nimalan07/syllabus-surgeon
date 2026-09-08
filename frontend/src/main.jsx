@@ -342,6 +342,21 @@ function PriorityBadge({ status }) {
 /* =========================================================================
    ASSESSMENT DETAIL DRAWER (PANEL)
    ========================================================================= */
+const PRIORITY_OPTIONS = [
+  { value: "low", label: "Low" },
+  { value: "medium", label: "Medium" },
+  { value: "high", label: "High" },
+];
+
+const STATUS_OPTIONS = [
+  { value: "not_started", label: "Not started" },
+  { value: "in_progress", label: "In progress" },
+  { value: "completed", label: "Completed" },
+];
+
+/* =========================================================================
+   ASSESSMENT DETAIL DRAWER (PANEL)
+   ========================================================================= */
 function AssessmentDetailDrawer({
   item,
   onClose,
@@ -349,13 +364,20 @@ function AssessmentDetailDrawer({
   isCompleted,
   onToggleComplete,
   onSetTargetDate,
+  onSaveAssessmentChanges,
+  onCompletedHoursChange,
   onPractice,
+  onScheduleSession,
 }) {
   if (!item) return null;
 
   const title = item.title || item.item;
-  const status = isCompleted ? "completed" : item.priority_level || item.status || "unranked";
+  const currentStatus = isCompleted ? "completed" : item.status || "not_started";
+  const priority = item.priority || item.priority_level || "medium";
   const weight = item.weight_percent != null ? item.weight_percent : item.weight;
+  const estimatedHrs = item.estimatedHours ?? item.estimated_hours ?? 1;
+  const completedHrs = item.completedHours ?? item.completed_hours ?? 0;
+  const officialDue = item.officialDueDate || item.official_due_date || item.due_date;
 
   return (
     <div className="drawer-overlay" onClick={onClose}>
@@ -373,7 +395,7 @@ function AssessmentDetailDrawer({
 
         <div className="drawer-body">
           <div className="drawer-status-row">
-            <PriorityBadge status={status} />
+            <PriorityBadge status={currentStatus === "completed" ? "completed" : priority} />
             <button
               className={`btn-drawer-complete ${isCompleted ? "completed" : ""}`}
               onClick={() => onToggleComplete(item)}
@@ -384,15 +406,107 @@ function AssessmentDetailDrawer({
 
           <div className="drawer-meta-grid">
             <div className="drawer-meta-cell">
-              <span className="meta-label">Official due date</span>
-              <strong>{formatDate(item.due_date)}</strong>
-              <small className={`status-highlight ${status}`}>{getStatusText(item)}</small>
+              <span className="meta-label">Official Deadline</span>
+              <strong>{formatDate(officialDue)}</strong>
+              <small className={`status-highlight ${currentStatus}`}>{getStatusText(item)}</small>
             </div>
 
             <div className="drawer-meta-cell">
-              <span className="meta-label">Grade weight</span>
-              <strong>{weight != null ? `${weight}%` : "Not specified"}</strong>
-              <small>Contributes directly to final score</small>
+              <span className="meta-label">Your Target Date</span>
+              <strong style={{ color: targetDate ? "var(--target)" : "var(--muted)" }}>
+                {targetDate ? formatDate(targetDate) : "Not set"}
+              </strong>
+              <small>Personal preparation milestone</small>
+            </div>
+          </div>
+
+          {/* Quick Editing Controls */}
+          <div className="drawer-section">
+            <span className="drawer-section-title">Assessment Management & Tracking</span>
+            <div className="drawer-meta-grid" style={{ marginTop: 4 }}>
+              <div className="drawer-meta-cell">
+                <span className="meta-label">Priority Level</span>
+                <select
+                  className="studio-select"
+                  style={{ width: "100%", marginTop: 4 }}
+                  value={priority}
+                  onChange={(e) =>
+                    onSaveAssessmentChanges(item.id, { priority: e.target.value })
+                  }
+                >
+                  {PRIORITY_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label} Priority
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="drawer-meta-cell">
+                <span className="meta-label">Workflow Status</span>
+                <select
+                  className="studio-select"
+                  style={{ width: "100%", marginTop: 4 }}
+                  value={currentStatus}
+                  onChange={(e) =>
+                    onSaveAssessmentChanges(item.id, { status: e.target.value })
+                  }
+                >
+                  {STATUS_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Study Hours Tracking */}
+          <div className="drawer-section">
+            <span className="drawer-section-title">Study Hours & Effort</span>
+            <div className="drawer-meta-grid">
+              <div className="drawer-meta-cell">
+                <span className="meta-label">Estimated Hours</span>
+                <input
+                  type="number"
+                  className="studio-input"
+                  min="0"
+                  step="0.25"
+                  style={{ marginTop: 4 }}
+                  value={estimatedHrs}
+                  onChange={(e) =>
+                    onSaveAssessmentChanges(item.id, {
+                      estimated_hours: Number(e.target.value),
+                    })
+                  }
+                />
+              </div>
+
+              <div className="drawer-meta-cell">
+                <span className="meta-label">Completed Hours</span>
+                <input
+                  type="number"
+                  className="studio-input"
+                  min="0"
+                  step="0.25"
+                  style={{ marginTop: 4 }}
+                  value={completedHrs}
+                  onChange={(e) =>
+                    onCompletedHoursChange(item, e.target.value)
+                  }
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="drawer-section">
+            <span className="drawer-section-title">Grade Weight</span>
+            <div className="drawer-topic-box">
+              <p>
+                <strong>Weight:</strong> {weight != null ? `${weight}%` : "Not specified"}
+                {weight != null && " · Contributes directly to final course grade."}
+              </p>
             </div>
           </div>
 
@@ -418,7 +532,7 @@ function AssessmentDetailDrawer({
           </div>
 
           <div className="drawer-section">
-            <span className="drawer-section-title">Student Target Date</span>
+            <span className="drawer-section-title">Personal Target Preparation Date</span>
             <div className="drawer-target-picker">
               <input
                 type="date"
@@ -437,12 +551,26 @@ function AssessmentDetailDrawer({
               )}
             </div>
             <small className="target-date-hint">
-              Setting a target preparation date pins this assessment to your calendar & daily plan.
+              Setting a personal target date schedules your preparation milestone without altering the official syllabus deadline.
             </small>
           </div>
         </div>
 
-        <div className="drawer-footer">
+        <div className="drawer-footer" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {onScheduleSession && (
+            <button
+              className="btn-drawer-practice"
+              style={{ background: "var(--purple-soft)", color: "var(--purple-dark)", boxShadow: "none" }}
+              onClick={() => {
+                onClose();
+                onScheduleSession(item);
+              }}
+            >
+              <span>⏱ Schedule a study session</span>
+              <span>+</span>
+            </button>
+          )}
+
           {item.topic && (
             <button
               className="btn-drawer-practice"
@@ -470,13 +598,19 @@ function AssessmentCard({
   isCompleted,
   onToggleComplete,
   onSetTargetDate,
+  onSaveAssessmentChanges,
+  onCompletedHoursChange,
   onPractice,
   onClickDetail,
 }) {
   const title = item.title || item.item;
-  const status = isCompleted ? "completed" : item.priority_level || item.status || "unranked";
+  const currentStatus = isCompleted ? "completed" : item.status || "not_started";
+  const priority = item.priority || item.priority_level || "medium";
   const statusText = isCompleted ? "Completed" : getStatusText(item);
   const weight = item.weight_percent != null ? item.weight_percent : item.weight;
+  const officialDue = item.officialDueDate || item.official_due_date || item.due_date;
+  const estimatedHrs = item.estimatedHours ?? item.estimated_hours ?? 1;
+  const completedHrs = item.completedHours ?? item.completed_hours ?? 0;
 
   return (
     <article
@@ -497,7 +631,7 @@ function AssessmentCard({
           >
             {isCompleted ? "✓ Completed" : "○ Mark complete"}
           </button>
-          <PriorityBadge status={status} />
+          <PriorityBadge status={isCompleted ? "completed" : priority} />
         </div>
       </div>
 
@@ -508,8 +642,15 @@ function AssessmentCard({
 
       <div className="assessment-meta">
         <div>
-          <span>Due date</span>
-          <strong>{formatDate(item.due_date)}</strong>
+          <span>Official deadline</span>
+          <strong>{formatDate(officialDue)}</strong>
+        </div>
+
+        <div>
+          <span>Your target</span>
+          <strong style={{ color: targetDate ? "var(--target)" : "var(--muted)" }}>
+            {targetDate ? formatDate(targetDate) : "Not set"}
+          </strong>
         </div>
 
         <div>
@@ -518,15 +659,15 @@ function AssessmentCard({
         </div>
 
         <div>
-          <span>Current status</span>
-          <strong className={`status-text ${status}`}>{statusText}</strong>
+          <span>Study progress</span>
+          <strong>{completedHrs} / {estimatedHrs} hrs</strong>
         </div>
       </div>
 
       {item.date_confidence &&
         item.date_confidence !== "high" &&
         item.date_confidence !== "user_set" &&
-        status !== "unranked" &&
+        priority !== "unranked" &&
         !isCompleted && (
           <div className="warning-banner">⚠ Date was inferred and needs confirmation</div>
         )}
@@ -1781,6 +1922,400 @@ function AuthModal({ isOpen, onClose, onLoginSuccess }) {
   );
 }
 
+/* =========================================================================
+   STUDY SESSION SCHEDULING MODAL (STEP 10)
+   ========================================================================= */
+function StudySessionModal({
+  isOpen,
+  onClose,
+  courses,
+  assessments,
+  onSaveSession,
+  isSaving,
+  prefillItem,
+}) {
+  const [courseId, setCourseId] = useState("");
+  const [assessmentId, setAssessmentId] = useState("");
+  const [sessionDate, setSessionDate] = useState(() =>
+    new Date().toISOString().slice(0, 10)
+  );
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+  const [plannedMinutes, setPlannedMinutes] = useState(60);
+  const [notes, setNotes] = useState("");
+  const [formError, setFormError] = useState("");
+
+  useEffect(() => {
+    if (isOpen) {
+      if (prefillItem) {
+        const foundCourse = courses.find(
+          (c) =>
+            c.id === prefillItem.courseId ||
+            c.id === prefillItem.course_id ||
+            c.code === prefillItem.courseCode ||
+            c.code === prefillItem.course_code ||
+            c.name === prefillItem.courseName ||
+            c.name === prefillItem.course_name
+        );
+        setCourseId(foundCourse ? foundCourse.id : courses[0]?.id || "");
+        setAssessmentId(prefillItem.id || "");
+        setNotes(prefillItem.topic ? `Focus: ${prefillItem.topic}` : "");
+        if (prefillItem.targetDate || prefillItem.target_date) {
+          setSessionDate(prefillItem.targetDate || prefillItem.target_date);
+        } else {
+          setSessionDate(new Date().toISOString().slice(0, 10));
+        }
+      } else {
+        if (courses.length > 0 && !courseId) {
+          setCourseId(courses[0].id);
+        }
+        setAssessmentId("");
+        setSessionDate(new Date().toISOString().slice(0, 10));
+        setNotes("");
+      }
+      setStartTime("");
+      setEndTime("");
+      setPlannedMinutes(60);
+      setFormError("");
+    }
+  }, [isOpen, prefillItem, courses]);
+
+  if (!isOpen) return null;
+
+  const filteredAssessments = assessments.filter(
+    (a) =>
+      (a.courseId || a.course_id) === courseId ||
+      courses.find((c) => c.id === courseId)?.code === (a.courseCode || a.course_code)
+  );
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!courseId) {
+      setFormError("Please select a course for this study session.");
+      return;
+    }
+    if (!sessionDate) {
+      setFormError("Please select a study session date.");
+      return;
+    }
+
+    try {
+      setFormError("");
+      await onSaveSession({
+        courseId,
+        assessmentId: assessmentId || null,
+        sessionDate,
+        startTime: startTime || null,
+        endTime: endTime || null,
+        plannedMinutes: Number(plannedMinutes) || 60,
+        notes: notes || null,
+      });
+      onClose();
+    } catch (err) {
+      setFormError(err.message || "Failed to schedule study session.");
+    }
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-card auth-modal-card" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-header">
+          <div>
+            <span className="eyebrow">STUDY TIME PLANNER</span>
+            <h2>Schedule Study Session</h2>
+          </div>
+          <button className="modal-close" onClick={onClose}>✕</button>
+        </div>
+
+        <p className="auth-modal-subtitle">
+          Plan focused revision slots for course topics or milestones. Persisted directly to your workspace database.
+        </p>
+
+        {formError && <div className="error-banner" style={{ marginBottom: 16 }}>⚠ {formError}</div>}
+
+        <form onSubmit={handleSubmit} className="auth-form">
+          <div className="control-group">
+            <label>Course *</label>
+            <select
+              className="studio-select"
+              required
+              value={courseId}
+              onChange={(e) => {
+                setCourseId(e.target.value);
+                setAssessmentId("");
+              }}
+            >
+              <option value="">Select course</option>
+              {courses.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.code || c.course_code
+                    ? `${c.code || c.course_code} · ${c.name || c.course_name}`
+                    : c.name || c.course_name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="control-group">
+            <label>Assessment / Topic (Optional)</label>
+            <select
+              className="studio-select"
+              value={assessmentId}
+              onChange={(e) => setAssessmentId(e.target.value)}
+            >
+              <option value="">General course study</option>
+              {filteredAssessments.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.title || a.item}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="drawer-meta-grid">
+            <div className="control-group">
+              <label>Study Date *</label>
+              <input
+                type="date"
+                className="studio-input"
+                required
+                value={sessionDate}
+                onChange={(e) => setSessionDate(e.target.value)}
+              />
+            </div>
+
+            <div className="control-group">
+              <label>Planned Duration (Minutes) *</label>
+              <input
+                type="number"
+                className="studio-input"
+                min="1"
+                max="1440"
+                required
+                value={plannedMinutes}
+                onChange={(e) => setPlannedMinutes(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="drawer-meta-grid">
+            <div className="control-group">
+              <label>Start Time (Optional)</label>
+              <input
+                type="time"
+                className="studio-input"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+              />
+            </div>
+
+            <div className="control-group">
+              <label>End Time (Optional)</label>
+              <input
+                type="time"
+                className="studio-input"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="control-group">
+            <label>Study Notes / Goals</label>
+            <textarea
+              className="studio-input"
+              style={{ minHeight: 70, resize: "vertical" }}
+              placeholder="e.g. Solve chapter 4 practice problems, review lecture slides"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 12 }}>
+            <button type="button" className="btn-cancel" onClick={onClose} disabled={isSaving}>
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="btn-confirm-reset"
+              style={{ background: "var(--purple)" }}
+              disabled={isSaving}
+            >
+              {isSaving ? "Saving session…" : "Add Study Session →"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+/* =========================================================================
+   STUDY SESSIONS DASHBOARD VIEW (STEP 10)
+   ========================================================================= */
+function StudySessionsView({
+  studySessions,
+  courses,
+  assessments,
+  onOpenCreateSession,
+  onUpdateSession,
+  onDeleteSession,
+}) {
+  const sortedSessions = useMemo(() => {
+    return [...studySessions].sort((a, b) => {
+      const dateA = a.sessionDate || a.session_date || "";
+      const dateB = b.sessionDate || b.session_date || "";
+      return dateB.localeCompare(dateA);
+    });
+  }, [studySessions]);
+
+  const totalMinutes = useMemo(
+    () =>
+      studySessions.reduce(
+        (acc, s) => acc + (Number(s.plannedMinutes || s.planned_minutes) || 0),
+        0
+      ),
+    [studySessions]
+  );
+  const completedSessions = useMemo(
+    () => studySessions.filter((s) => s.status === "completed"),
+    [studySessions]
+  );
+
+  return (
+    <section className="daily-plan-section">
+      <div className="daily-plan-header">
+        <div>
+          <span className="eyebrow">CALENDAR PERSISTENCE</span>
+          <h2>Saved Study Sessions</h2>
+          <p>
+            Scheduled study blocks linked to your courses and assessments, persisted in PostgreSQL.
+          </p>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div className="daily-plan-stats-pill">
+            <div>
+              <strong>{studySessions.length}</strong>
+              <span>Sessions</span>
+            </div>
+            <div className="pill-divider" />
+            <div>
+              <strong>{Math.floor(totalMinutes / 60)}h {totalMinutes % 60}m</strong>
+              <span>Planned Study</span>
+            </div>
+            <div className="pill-divider" />
+            <div>
+              <strong>{completedSessions.length}</strong>
+              <span>Completed</span>
+            </div>
+          </div>
+
+          <button
+            className="primary-button"
+            onClick={() => onOpenCreateSession(null)}
+          >
+            <span>+</span> Schedule Session
+          </button>
+        </div>
+      </div>
+
+      {studySessions.length === 0 ? (
+        <div className="daily-plan-empty">
+          <div className="empty-icon">⏱</div>
+          <h3>No study sessions scheduled yet</h3>
+          <p>Schedule focused study sessions for your courses and milestones to build productive habits.</p>
+          <button
+            className="primary-button"
+            style={{ marginTop: 14 }}
+            onClick={() => onOpenCreateSession(null)}
+          >
+            <span>+</span> Schedule First Study Session
+          </button>
+        </div>
+      ) : (
+        <div className="daily-plan-list">
+          {sortedSessions.map((session) => {
+            const isDone = session.status === "completed";
+            const courseLabel = session.courseCode || session.courseName || "Course Study";
+            const linkedAssessment = assessments.find(
+              (a) => a.id === (session.assessmentId || session.assessment_id)
+            );
+
+            return (
+              <div
+                key={session.id}
+                className={`daily-plan-card ${isDone ? "completed" : ""}`}
+              >
+                <div className="daily-plan-index">
+                  <span>{isDone ? "✓" : "⏱"}</span>
+                </div>
+
+                <div className="daily-plan-content">
+                  <div className="daily-plan-top">
+                    <div>
+                      <span className="daily-plan-course">{courseLabel}</span>
+                      <h3 style={{ margin: "2px 0 4px", fontSize: 17, fontWeight: 800 }}>
+                        {linkedAssessment
+                          ? linkedAssessment.title || linkedAssessment.item
+                          : session.notes
+                          ? session.notes.slice(0, 50)
+                          : "Course Revision Session"}
+                      </h3>
+                    </div>
+
+                    <div className="daily-plan-chips">
+                      <span className="workload-chip">
+                        📅 {session.sessionDate || session.session_date}
+                        {session.startTime && ` · ${session.startTime}`}
+                        {session.endTime && ` - ${session.endTime}`}
+                      </span>
+                      <span className="weight-chip">
+                        ⏱ {session.plannedMinutes || session.planned_minutes} mins
+                      </span>
+                      <PriorityBadge status={isDone ? "completed" : session.status || "planned"} />
+                    </div>
+                  </div>
+
+                  {session.notes && (
+                    <div className="daily-plan-rationale">
+                      <strong>Notes & Goals:</strong>
+                      <p>{session.notes}</p>
+                    </div>
+                  )}
+
+                  <div className="daily-plan-actions" style={{ marginTop: 12 }}>
+                    <button
+                      className={`btn-daily-complete ${isDone ? "completed" : ""}`}
+                      onClick={() =>
+                        onUpdateSession(session.id, {
+                          status: isDone ? "planned" : "completed",
+                          actual_minutes: isDone ? 0 : Number(session.plannedMinutes || 60),
+                        })
+                      }
+                    >
+                      {isDone ? "✓ Completed (Mark active)" : "○ Mark as completed"}
+                    </button>
+
+                    <button
+                      className="btn-danger-outline"
+                      style={{ padding: "6px 12px", fontSize: 12 }}
+                      onClick={() => onDeleteSession(session.id)}
+                      title="Delete study session"
+                    >
+                      🗑 Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function WorkspaceModal({ isOpen, onClose, onSave, onDelete, editingWorkspace }) {
   const [name, setName] = useState("");
   const [semester, setSemester] = useState("Fall 2026");
@@ -1885,8 +2420,14 @@ function PlannerDashboard({
   warnings,
   targetDates,
   completedItems,
+  studySessions,
   onToggleComplete,
   onSetTargetDate,
+  onSaveAssessmentChanges,
+  onCompletedHoursChange,
+  onOpenCreateSession,
+  onUpdateSession,
+  onDeleteSession,
   onOpenExport,
   onOpenReset,
   onOpenUpload,
@@ -2115,6 +2656,12 @@ function PlannerDashboard({
               <span>⚡</span> Daily Plan
             </button>
             <button
+              className={`header-tab-btn ${activeTab === "sessions" ? "active" : ""}`}
+              onClick={() => setActiveTab("sessions")}
+            >
+              <span>⏱</span> Sessions ({studySessions.length})
+            </button>
+            <button
               className={`header-tab-btn ${activeTab === "subjects" ? "active" : ""}`}
               onClick={() => setActiveTab("subjects")}
             >
@@ -2174,6 +2721,13 @@ function PlannerDashboard({
               </button>
             )}
 
+            <button
+              className="btn-header-action"
+              onClick={() => onOpenCreateSession(null)}
+              title="Schedule a new study session"
+            >
+              ⏱ Session
+            </button>
             <button className="btn-header-action" onClick={onOpenExport} title="Export calendar (.ics), CSV, JSON">
               📥 Export
             </button>
@@ -2224,6 +2778,14 @@ function PlannerDashboard({
             >
               <span>⚡</span>
               Daily Study Plan
+            </button>
+
+            <button
+              className={activeTab === "sessions" ? "active" : ""}
+              onClick={() => setActiveTab("sessions")}
+            >
+              <span>⏱</span>
+              Study Sessions ({studySessions.length})
             </button>
 
             <button
@@ -2287,9 +2849,9 @@ function PlannerDashboard({
           </nav>
 
           <div className="sidebar-help">
-            <strong>Need to add another course?</strong>
-            <p>Upload another syllabus PDF anytime to enrich your plan.</p>
-            <button onClick={onOpenUpload}>Upload PDF →</button>
+            <strong>Need to schedule study time?</strong>
+            <p>Schedule a focused session with course milestones.</p>
+            <button onClick={() => onOpenCreateSession(null)}>+ Schedule Session</button>
           </div>
         </aside>
 
@@ -2303,6 +2865,8 @@ function PlannerDashboard({
                   ? "ACADEMIC CALENDAR"
                   : activeTab === "daily"
                   ? "TODAY'S SCHEDULE"
+                  : activeTab === "sessions"
+                  ? "STUDY SESSIONS"
                   : activeTab === "subjects"
                   ? "SUBJECT PORTFOLIOS"
                   : activeTab === "practice"
@@ -2316,6 +2880,8 @@ function PlannerDashboard({
                   ? "Academic schedule & target dates."
                   : activeTab === "daily"
                   ? "Your daily study itinerary."
+                  : activeTab === "sessions"
+                  ? "Your scheduled study sessions & time blocks."
                   : activeTab === "subjects"
                   ? "Subject breakdown & course stats."
                   : activeTab === "practice"
@@ -2347,7 +2913,7 @@ function PlannerDashboard({
               icon="▦"
             />
             <StatCard value={counts.all} label="Assessments" icon="✓" />
-            <StatCard value={counts.overdue} label="Overdue" icon="!" />
+            <StatCard value={studySessions.length} label="Study Sessions" icon="⏱" />
             <StatCard value={counts.completed} label="Completed" icon="✓" />
             <StatCard
               value={`${progressPercent}%`}
@@ -2393,6 +2959,17 @@ function PlannerDashboard({
               onToggleComplete={onToggleComplete}
               onPractice={handleOpenPracticeStudio}
               onClickDetail={setSelectedDrawerItem}
+            />
+          )}
+
+          {activeTab === "sessions" && (
+            <StudySessionsView
+              studySessions={studySessions}
+              courses={courses}
+              assessments={assessments}
+              onOpenCreateSession={onOpenCreateSession}
+              onUpdateSession={onUpdateSession}
+              onDeleteSession={onDeleteSession}
             />
           )}
 
@@ -2511,6 +3088,8 @@ function PlannerDashboard({
                           isCompleted={isCompleted}
                           onToggleComplete={onToggleComplete}
                           onSetTargetDate={onSetTargetDate}
+                          onSaveAssessmentChanges={onSaveAssessmentChanges}
+                          onCompletedHoursChange={onCompletedHoursChange}
                           onPractice={handleOpenPracticeStudio}
                           onClickDetail={setSelectedDrawerItem}
                         />
@@ -2538,7 +3117,10 @@ function PlannerDashboard({
           isCompleted={Boolean(completedItems[getAssessmentId(selectedDrawerItem)]?.completed || selectedDrawerItem.completed)}
           onToggleComplete={onToggleComplete}
           onSetTargetDate={onSetTargetDate}
+          onSaveAssessmentChanges={onSaveAssessmentChanges}
+          onCompletedHoursChange={onCompletedHoursChange}
           onPractice={handleOpenPracticeStudio}
+          onScheduleSession={onOpenCreateSession}
         />
       )}
     </main>
@@ -2966,6 +3548,9 @@ function LandingPage({
 /* =========================================================================
    MAIN APP COMPONENT (PHASE 3A AUTH & WORKSPACES)
    ========================================================================= */
+/* =========================================================================
+   MAIN APP COMPONENT (PHASE 3A AUTH, WORKSPACES & STEP 9/10 PERSISTENCE)
+   ========================================================================= */
 export default function App() {
   const [view, setView] = useState("landing");
   const [courses, setCourses] = useState([]);
@@ -2983,10 +3568,18 @@ export default function App() {
   const [workspaceModalOpen, setWorkspaceModalOpen] = useState(false);
   const [editingWorkspace, setEditingWorkspace] = useState(null);
 
+  // Step 10: Study Sessions State
+  const [studySessions, setStudySessions] = useState([]);
+  const [isSavingSession, setIsSavingSession] = useState(false);
+  const [sessionError, setSessionError] = useState("");
+  const [studySessionModalOpen, setStudySessionModalOpen] = useState(false);
+  const [studySessionPrefill, setStudySessionPrefill] = useState(null);
+
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [loadingStage, setLoadingStage] = useState("");
   const [error, setError] = useState("");
+  const [loadError, setLoadError] = useState("");
 
   const [targetDates, setTargetDates] = useState({});
   const [completedItems, setCompletedItems] = useState({});
@@ -3042,6 +3635,27 @@ export default function App() {
             if (!cancelled && allAssessments.length > 0) {
               flattenAndSetAssessments(cloudCourses, targets, completed);
             }
+
+            // Fetch study sessions for courses
+            try {
+              const sessionGroups = await Promise.all(
+                cloudCourses.map(async (course) => {
+                  try {
+                    const sessions = await getStudySessions(course.id);
+                    return sessions.map((session) =>
+                      normalizeStudySession(session, course)
+                    );
+                  } catch {
+                    return [];
+                  }
+                })
+              );
+              if (!cancelled) {
+                setStudySessions(sessionGroups.flat());
+              }
+            } catch {
+              // Ignore session load error
+            }
           }
         } else if (savedPlan) {
           const parsed = JSON.parse(savedPlan);
@@ -3096,12 +3710,26 @@ export default function App() {
       if (cloudCourses && cloudCourses.length > 0) {
         setCourses(cloudCourses);
         flattenAndSetAssessments(cloudCourses);
+
+        // Fetch study sessions
+        const sessionGroups = await Promise.all(
+          cloudCourses.map(async (course) => {
+            try {
+              const sessions = await getStudySessions(course.id);
+              return sessions.map((session) =>
+                normalizeStudySession(session, course)
+              );
+            } catch {
+              return [];
+            }
+          })
+        );
+        setStudySessions(sessionGroups.flat());
       }
     } catch {
       // Offline fallback
     }
   }
-
 
   function handleLoginSuccess(token, user) {
     setAuthToken(token);
@@ -3118,6 +3746,7 @@ export default function App() {
     localStorage.removeItem(STORAGE_KEYS.user);
     setWorkspaces([{ id: "default-ws", name: "Default Semester", semester: "Current" }]);
     setCurrentWorkspaceId("default-ws");
+    setStudySessions([]);
   }
 
   async function handleCreateOrUpdateWorkspace(name, semester) {
@@ -3128,7 +3757,6 @@ export default function App() {
           setWorkspaces((prev) => prev.map((w) => (w.id === updated.id ? updated : w)));
         }
       } catch {
-        // Fallback local update
         setWorkspaces((prev) =>
           prev.map((w) => (w.id === editingWorkspace.id ? { ...w, name, semester } : w))
         );
@@ -3171,6 +3799,7 @@ export default function App() {
       setCurrentWorkspaceId(fallback.id);
       setCourses([]);
       setAssessments([]);
+      setStudySessions([]);
     } else {
       setWorkspaces(updated);
       if (currentWorkspaceId === workspaceId) {
@@ -3181,6 +3810,7 @@ export default function App() {
         } else {
           setCourses([]);
           setAssessments([]);
+          setStudySessions([]);
         }
       }
     }
@@ -3192,7 +3822,10 @@ export default function App() {
   function flattenAndSetAssessments(coursesList, targetMap = targetDates, completedMap = completedItems) {
     const list = coursesList.flatMap((course) =>
       (course.items || course.assessments || []).map((it) => {
-        const id = getAssessmentId({ ...it, course_code: course.course_code || course.code });
+        const id = it.id || getAssessmentId({ ...it, course_code: course.course_code || course.code });
+        const isDone = Boolean(
+          completedMap[id]?.completed || it.completed || it.status === "completed"
+        );
         return {
           ...it,
           id: it.id || id,
@@ -3202,8 +3835,13 @@ export default function App() {
           official_due_date: it.official_due_date || it.due_date || null,
           due_date: it.official_due_date || it.due_date || null,
           target_date: targetMap[id] || it.target_date || "",
-          completed: Boolean(completedMap[id]?.completed || it.completed || it.status === "completed"),
+          targetDate: targetMap[id] || it.target_date || "",
+          status: it.status || (isDone ? "completed" : "not_started"),
+          completed: isDone,
           priority_level: it.priority_level || it.priority || "medium",
+          priority: it.priority || it.priority_level || "medium",
+          estimatedHours: Number(it.estimated_hours ?? it.estimatedHours ?? 1),
+          completedHours: Number(it.completed_hours ?? it.completedHours ?? 0),
         };
       })
     );
@@ -3292,9 +3930,59 @@ export default function App() {
     }
   }
 
+  // Step 9: Save assessment changes to PostgreSQL & state
+  async function saveAssessmentChanges(assessmentId, changes) {
+    try {
+      setLoadError("");
+      const updatedAssessment = await updateAssessment(assessmentId, changes);
+
+      const targetCourse = courses.find(
+        (course) => course.id === updatedAssessment.course_id
+      );
+
+      const normalized = normalizeAssessment(updatedAssessment, targetCourse);
+
+      setAssessments((previousAssessments) =>
+        previousAssessments.map((assessment) => {
+          const isMatch =
+            assessment.id === assessmentId ||
+            (assessment.course_id === updatedAssessment.course_id &&
+              (assessment.title || assessment.item) === updatedAssessment.title);
+          return isMatch ? { ...assessment, ...normalized } : assessment;
+        })
+      );
+
+      if (changes.status !== undefined) {
+        const isDone = changes.status === "completed";
+        setCompletedItems((prev) => ({
+          ...prev,
+          [assessmentId]: {
+            completed: isDone,
+            completed_at: isDone ? new Date().toISOString() : null,
+          },
+        }));
+      }
+      if (changes.target_date !== undefined) {
+        setTargetDates((prev) => ({
+          ...prev,
+          [assessmentId]: changes.target_date || "",
+        }));
+      }
+
+      return updatedAssessment;
+    } catch (err) {
+      setLoadError(err.message || "Unable to save assessment changes");
+      throw err;
+    }
+  }
+
+  // Step 9: Fix Completion Toggle (status: "completed" / "not_started")
   async function handleToggleComplete(itemToUpdate) {
-    const id = getAssessmentId(itemToUpdate);
-    const currentlyDone = Boolean(completedItems[id]?.completed || itemToUpdate.completed);
+    const id = itemToUpdate.id || getAssessmentId(itemToUpdate);
+    const currentlyDone =
+      itemToUpdate.status === "completed" ||
+      Boolean(completedItems[id]?.completed || itemToUpdate.completed);
+    const nextStatus = currentlyDone ? "not_started" : "completed";
 
     const updatedMap = {
       ...completedItems,
@@ -3307,10 +3995,13 @@ export default function App() {
     setCompletedItems(updatedMap);
     localStorage.setItem(STORAGE_KEYS.completed, JSON.stringify(updatedMap));
 
-    // If item has a backend UUID, sync to PostgreSQL
+    // If item has a backend UUID, persist via API
     if (itemToUpdate.id && !String(itemToUpdate.id).includes("|")) {
       try {
-        await updateAssessment(itemToUpdate.id, { completed: !currentlyDone });
+        await saveAssessmentChanges(itemToUpdate.id, {
+          status: nextStatus,
+        });
+        return;
       } catch {
         // Fallback local
       }
@@ -3329,6 +4020,7 @@ export default function App() {
         return sameItem
           ? {
               ...item,
+              status: nextStatus,
               completed: !currentlyDone,
             }
           : item;
@@ -3336,8 +4028,9 @@ export default function App() {
     );
   }
 
+  // Step 9: Target date update
   async function handleSetTargetDate(itemToUpdate, newDateStr) {
-    const id = getAssessmentId(itemToUpdate);
+    const id = itemToUpdate.id || getAssessmentId(itemToUpdate);
     const updatedMap = {
       ...targetDates,
       [id]: newDateStr || "",
@@ -3346,10 +4039,12 @@ export default function App() {
     setTargetDates(updatedMap);
     localStorage.setItem(STORAGE_KEYS.targetDates, JSON.stringify(updatedMap));
 
-    // If item has a backend UUID, sync to PostgreSQL
     if (itemToUpdate.id && !String(itemToUpdate.id).includes("|")) {
       try {
-        await updateAssessment(itemToUpdate.id, { target_date: newDateStr || null });
+        await saveAssessmentChanges(itemToUpdate.id, {
+          target_date: newDateStr || null,
+        });
+        return;
       } catch {
         // Fallback local
       }
@@ -3369,12 +4064,115 @@ export default function App() {
       return {
         ...it,
         target_date: newDateStr || null,
+        targetDate: newDateStr || null,
       };
     });
 
     setAssessments(updatedList);
   }
 
+  // Step 9: Safe completed hours change
+  async function handleCompletedHoursChange(item, value) {
+    const maxHours = Number(item.estimatedHours ?? item.estimated_hours ?? 100);
+    const completedHours = Math.max(0, Math.min(Number(value), maxHours));
+
+    if (item.id && !String(item.id).includes("|")) {
+      try {
+        await saveAssessmentChanges(item.id, {
+          completed_hours: completedHours,
+        });
+        return;
+      } catch {
+        // Fallback local
+      }
+    }
+
+    setAssessments((current) =>
+      current.map((it) =>
+        it.id === item.id || getAssessmentId(it) === getAssessmentId(item)
+          ? { ...it, completed_hours: completedHours, completedHours }
+          : it
+      )
+    );
+  }
+
+  // Step 10: Study Session Handlers
+  async function handleCreateStudySession({
+    courseId,
+    assessmentId,
+    sessionDate,
+    startTime,
+    endTime,
+    plannedMinutes,
+    notes,
+  }) {
+    try {
+      setIsSavingSession(true);
+      setSessionError("");
+
+      const createdSession = await createStudySession({
+        course_id: courseId,
+        assessment_id: assessmentId || null,
+        session_date: sessionDate,
+        start_time: startTime || null,
+        end_time: endTime || null,
+        planned_minutes: Number(plannedMinutes),
+        actual_minutes: 0,
+        status: "planned",
+        notes: notes || null,
+      });
+
+      const course = courses.find((item) => item.id === createdSession.course_id);
+      const normalizedSession = normalizeStudySession(createdSession, course);
+
+      setStudySessions((previousSessions) => [
+        normalizedSession,
+        ...previousSessions,
+      ]);
+
+      return normalizedSession;
+    } catch (err) {
+      setSessionError(err.message || "Unable to save study session");
+      throw err;
+    } finally {
+      setIsSavingSession(false);
+    }
+  }
+
+  async function handleUpdateStudySession(sessionId, changes) {
+    try {
+      const updatedSession = await updateStudySession(sessionId, changes);
+      const course = courses.find((item) => item.id === updatedSession.course_id);
+      const normalizedSession = normalizeStudySession(updatedSession, course);
+
+      setStudySessions((previousSessions) =>
+        previousSessions.map((session) =>
+          session.id === sessionId ? normalizedSession : session
+        )
+      );
+      return normalizedSession;
+    } catch (err) {
+      console.error("Failed to update study session:", err);
+      throw err;
+    }
+  }
+
+  async function handleDeleteStudySession(sessionId) {
+    try {
+      await deleteStudySession(sessionId);
+      setStudySessions((previousSessions) =>
+        previousSessions.filter((session) => session.id !== sessionId)
+      );
+    } catch (err) {
+      console.error("Failed to delete study session:", err);
+      throw err;
+    }
+  }
+
+  function handleOpenCreateSession(prefill = null) {
+    setStudySessionPrefill(prefill);
+    setStudySessionModalOpen(true);
+  }
 
   // Export functions
   function handleExportICS() {
@@ -3451,6 +4249,7 @@ export default function App() {
       subjects_count: courses.length,
       assessments_count: assessments.length,
       completed_count: assessments.filter((c) => c.completed).length,
+      study_sessions_count: studySessions.length,
       courses: courses.map((c) => ({
         code: c.course_code,
         name: c.course_name,
@@ -3474,6 +4273,7 @@ export default function App() {
           recommended_action: it.recommended_action,
         };
       }),
+      study_sessions: studySessions,
     };
 
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
@@ -3503,6 +4303,7 @@ export default function App() {
 
     setCourses([]);
     setAssessments([]);
+    setStudySessions([]);
     setWarnings([]);
     setTargetDates({});
     setCompletedItems({});
@@ -3534,8 +4335,14 @@ export default function App() {
           warnings={warnings}
           targetDates={targetDates}
           completedItems={completedItems}
+          studySessions={studySessions}
           onToggleComplete={handleToggleComplete}
           onSetTargetDate={handleSetTargetDate}
+          onSaveAssessmentChanges={saveAssessmentChanges}
+          onCompletedHoursChange={handleCompletedHoursChange}
+          onOpenCreateSession={handleOpenCreateSession}
+          onUpdateSession={handleUpdateStudySession}
+          onDeleteSession={handleDeleteStudySession}
           onOpenExport={() => setExportModalOpen(true)}
           onOpenReset={() => setResetModalOpen(true)}
           onOpenUpload={() => {
@@ -3562,6 +4369,20 @@ export default function App() {
           onLogout={handleLogout}
         />
       )}
+
+      {/* Step 10: Study Session Modal */}
+      <StudySessionModal
+        isOpen={studySessionModalOpen}
+        onClose={() => {
+          setStudySessionModalOpen(false);
+          setStudySessionPrefill(null);
+        }}
+        courses={courses}
+        assessments={assessments}
+        onSaveSession={handleCreateStudySession}
+        isSaving={isSavingSession}
+        prefillItem={studySessionPrefill}
+      />
 
       {/* Phase 3A: Auth Modal */}
       <AuthModal
