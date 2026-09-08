@@ -5,6 +5,12 @@ from pydantic import BaseModel, ConfigDict, Field, computed_field
 from schemas.assessment import AssessmentResponse
 
 
+class CourseBase(BaseModel):
+    code: str | None = None
+    name: str = Field(min_length=1, max_length=200)
+    description: str | None = None
+
+
 class CourseCreate(BaseModel):
     code: str | None = Field(
         default=None,

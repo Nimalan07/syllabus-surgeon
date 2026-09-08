@@ -5,6 +5,19 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 
+class StudySessionBase(BaseModel):
+    course_id: UUID | None = None
+    workspace_id: UUID | None = None
+    assessment_id: UUID | None = None
+    session_date: date
+    start_time: time | None = None
+    end_time: time | None = None
+    planned_minutes: int = 60
+    actual_minutes: int = 0
+    status: str = "planned"
+    notes: str | None = None
+
+
 class StudySessionCreate(BaseModel):
     course_id: UUID | None = None
     workspace_id: UUID | None = None

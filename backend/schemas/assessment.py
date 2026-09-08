@@ -4,6 +4,20 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
 
+class AssessmentBase(BaseModel):
+    title: str = Field(min_length=1, max_length=255)
+    description: str | None = None
+    assessment_type: str = Field(default="other", max_length=50)
+    official_due_date: date | None = None
+    target_date: date | None = None
+    priority: str = Field(default="medium", max_length=30)
+    status: str = Field(default="not_started", max_length=30)
+    estimated_hours: Decimal = Field(default=Decimal("1.00"), ge=0, max_digits=6, decimal_places=2)
+    completed_hours: Decimal = Field(default=Decimal("0.00"), ge=0, max_digits=6, decimal_places=2)
+    difficulty: str | None = None
+    impact: str | None = None
+
+
 class AssessmentCreate(BaseModel):
     title: str = Field(
         min_length=1,
