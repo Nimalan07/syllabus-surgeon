@@ -11,6 +11,9 @@ from core.config import settings
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 bearer_scheme = HTTPBearer(auto_error=False)
 
+DEMO_USER_ID = UUID("00000000-0000-0000-0000-000000000001")
+DEMO_USER_EMAIL = "demo@syllabussurgeon.local"
+
 
 @dataclass
 class CurrentUser:
@@ -90,3 +93,23 @@ def get_current_user(
         id=parsed_user_id,
         email=email,
     )
+
+
+def get_optional_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+) -> CurrentUser:
+    if credentials is None:
+        return CurrentUser(
+            id=DEMO_USER_ID,
+            email=DEMO_USER_EMAIL,
+            display_name="Demo Student",
+        )
+
+    try:
+        return get_current_user(credentials)
+    except HTTPException:
+        return CurrentUser(
+            id=DEMO_USER_ID,
+            email=DEMO_USER_EMAIL,
+            display_name="Demo Student",
+        )
