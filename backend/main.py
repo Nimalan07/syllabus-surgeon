@@ -3,9 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from core.config import settings
 from core.database import Base, engine
-from routes import assessments, auth, courses, questions, upload, workspaces
+from routes import assessments, auth, courses, questions, study_sessions, upload, workspaces
 
-# Automatically create tables in local DB or PostgreSQL
+# Automatically create tables in database (PostgreSQL / SQLite fallback)
 try:
     Base.metadata.create_all(bind=engine)
 except Exception as e:
@@ -24,11 +24,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Authentication & Workspaces
+# Authentication, Workspaces, Courses, Assessments, Study Sessions
 app.include_router(auth.router)
 app.include_router(workspaces.router)
 app.include_router(courses.router)
 app.include_router(assessments.router)
+app.include_router(study_sessions.router)
 
 # AI Extraction & Practice Questions
 app.include_router(upload.router, prefix="/api")

@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from core.auth import CurrentUser, get_current_user
 from core.database import get_db
 from models.database import Assessment, Course, Workspace
-from models.workspace_schema import (
+from schemas.assessment import (
     AssessmentCreate,
     AssessmentResponse,
     AssessmentUpdate,
@@ -46,10 +46,43 @@ def get_owned_assessment(
 
 
 @router.get(
+    "/courses/{course_id}/assessments",
+    response_model=list[AssessmentResponse],
+)
+def list_course_assessments(
+    course_id: UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    course = db.scalar(
+        select(Course)
+        .join(Workspace, Course.workspace_id == Workspace.id)
+        .where(
+            Course.id == course_id,
+            Workspace.user_id == current_user.id,
+        )
+    )
+
+    if course is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Course not found",
+        )
+
+    statement = (
+        select(Assessment)
+        .where(Assessment.course_id == course_id)
+        .order_by(Assessment.official_due_date.asc().nullslast())
+    )
+
+    return list(db.scalars(statement).all())
+
+
+@router.get(
     "/workspaces/{workspace_id}/assessments",
     response_model=list[AssessmentResponse],
 )
-def list_assessments(
+def list_workspace_assessments(
     workspace_id: UUID,
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -62,7 +95,7 @@ def list_assessments(
             Workspace.id == workspace_id,
             Workspace.user_id == current_user.id,
         )
-        .order_by(Assessment.due_date.asc().nullslast())
+        .order_by(Assessment.official_due_date.asc().nullslast())
     )
 
     return list(db.scalars(statement).all())
@@ -94,9 +127,26 @@ def create_assessment(
             detail="Course not found",
         )
 
+    official_due = payload.official_due_date or payload.due_date
+    priority = payload.priority or payload.priority_level or "medium"
+
     assessment = Assessment(
         course_id=course_id,
-        **payload.model_dump(),
+        title=payload.title,
+        description=payload.description,
+        assessment_type=payload.assessment_type or "other",
+        official_due_date=official_due,
+        target_date=payload.target_date,
+        priority=priority,
+        status=payload.status or "not_started",
+        estimated_hours=payload.estimated_hours or 1.0,
+        completed_hours=payload.completed_hours or 0.0,
+        difficulty=payload.difficulty,
+        impact=payload.impact,
+        weight_percent=payload.weight_percent,
+        topic=payload.topic,
+        recommended_action=payload.recommended_action,
+        why_prioritized=payload.why_prioritized,
     )
 
     db.add(assessment)
@@ -124,17 +174,30 @@ def update_assessment(
 
     updates = payload.model_dump(exclude_unset=True)
 
+    # Handle official_due_date / due_date alias
+    if "official_due_date" in updates:
+        assessment.official_due_date = updates.pop("official_due_date")
+    elif "due_date" in updates:
+        assessment.official_due_date = updates.pop("due_date")
+
+    # Handle priority / priority_level alias
+    if "priority" in updates:
+        assessment.priority = updates.pop("priority")
+    elif "priority_level" in updates:
+        assessment.priority = updates.pop("priority_level")
+
+    # Handle completion status
     if "completed" in updates:
-        completed = updates["completed"]
-        assessment.completed = completed
-        if completed:
-            assessment.completed_at = datetime.now(timezone.utc)
-        else:
-            assessment.completed_at = None
-        updates.pop("completed")
+        completed = updates.pop("completed")
+        assessment.status = "completed" if completed else "not_started"
+        if completed and assessment.completed_hours == 0:
+            assessment.completed_hours = assessment.estimated_hours
+    elif "status" in updates:
+        assessment.status = updates.pop("status")
 
     for field, value in updates.items():
-        setattr(assessment, field, value)
+        if hasattr(assessment, field):
+            setattr(assessment, field, value)
 
     db.commit()
     db.refresh(assessment)
@@ -146,7 +209,7 @@ def update_assessment(
     "/assessments/{assessment_id}/complete",
     response_model=AssessmentResponse,
 )
-def complete_assessment(
+def toggle_assessment_complete(
     assessment_id: UUID,
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -157,11 +220,12 @@ def complete_assessment(
         db,
     )
 
-    assessment.completed = not assessment.completed
-    if assessment.completed:
-        assessment.completed_at = datetime.now(timezone.utc)
+    if assessment.status == "completed":
+        assessment.status = "not_started"
     else:
-        assessment.completed_at = None
+        assessment.status = "completed"
+        if assessment.completed_hours == 0:
+            assessment.completed_hours = assessment.estimated_hours
 
     db.commit()
     db.refresh(assessment)

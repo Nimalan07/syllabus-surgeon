@@ -1,5 +1,10 @@
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from uuid import UUID
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from sqlalchemy.orm import Session
 
+from core.auth import CurrentUser, bearer_scheme, get_current_user
+from core.database import get_db
+from models.database import Assessment, Course, Workspace
 from services.pdf_parser import (
     PDFExtractionError,
     extract_text,
@@ -7,13 +12,14 @@ from services.pdf_parser import (
 from services.llm_client import extract_syllabus
 from services.priority_engine import rank_items, realign_course_items
 
-
 router = APIRouter()
 
 
 @router.post("/upload")
 async def upload_syllabus(
     file: UploadFile = File(...),
+    workspace_id: str | None = Form(default=None),
+    db: Session = Depends(get_db),
 ):
     if file.content_type != "application/pdf":
         raise HTTPException(
@@ -57,6 +63,42 @@ async def upload_syllabus(
             result.warnings.append(
                 "Courses were detected, but no assessments were found."
             )
+
+        # 3. If workspace_id is provided and valid, auto-persist to PostgreSQL
+        if workspace_id:
+            try:
+                ws_uuid = UUID(workspace_id)
+                workspace = db.scalar(select(Workspace).where(Workspace.id == ws_uuid))
+                if workspace:
+                    for c in result.courses:
+                        db_course = Course(
+                            workspace_id=ws_uuid,
+                            code=c.course_code,
+                            name=c.course_name or "Course",
+                            description=c.description,
+                        )
+                        db.add(db_course)
+                        db.flush()
+
+                        for it in c.items:
+                            db_assess = Assessment(
+                                course_id=db_course.id,
+                                title=it.item,
+                                topic=it.topic,
+                                official_due_date=it.due_date,
+                                target_date=it.target_date,
+                                weight_percent=it.weight_percent,
+                                priority=it.priority_level or "medium",
+                                status="not_started",
+                                recommended_action=it.recommended_action,
+                                why_prioritized=it.why_prioritized,
+                            )
+                            db.add(db_assess)
+
+                    db.commit()
+            except Exception as persist_err:
+                # Log but don't fail response
+                print(f"Warning: could not auto-persist to DB: {persist_err}")
 
         return result
 

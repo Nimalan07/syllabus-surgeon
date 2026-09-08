@@ -11,8 +11,8 @@ from core.auth import (
     verify_password,
 )
 from core.database import get_db
-from models.database import UserProfile, Workspace
-from models.workspace_schema import (
+from models.database import User, Workspace
+from schemas.workspace import (
     AuthResponse,
     UserLogin,
     UserRegister,
@@ -35,7 +35,7 @@ def register(
     db: Session = Depends(get_db),
 ):
     existing_user = db.scalar(
-        select(UserProfile).where(UserProfile.email == payload.email.lower().strip())
+        select(User).where(User.email == payload.email.lower().strip())
     )
 
     if existing_user:
@@ -45,10 +45,12 @@ def register(
         )
 
     user_id = uuid.uuid4()
-    new_user = UserProfile(
+    full_name = payload.full_name or payload.display_name or payload.email.split("@")[0]
+
+    new_user = User(
         id=user_id,
         email=payload.email.lower().strip(),
-        display_name=payload.display_name or payload.email.split("@")[0],
+        full_name=full_name,
         hashed_password=hash_password(payload.password),
     )
 
@@ -57,7 +59,6 @@ def register(
         id=uuid.uuid4(),
         user_id=user_id,
         name="Fall 2026 Semester",
-        semester="Fall 2026",
     )
 
     db.add(new_user)
@@ -82,7 +83,7 @@ def login(
     db: Session = Depends(get_db),
 ):
     user = db.scalar(
-        select(UserProfile).where(UserProfile.email == payload.email.lower().strip())
+        select(User).where(User.email == payload.email.lower().strip())
     )
 
     if not user or not verify_password(payload.password, user.hashed_password or ""):
@@ -108,15 +109,14 @@ def get_me(
     db: Session = Depends(get_db),
 ):
     user = db.scalar(
-        select(UserProfile).where(UserProfile.id == current_user.id)
+        select(User).where(User.id == current_user.id)
     )
 
     if not user:
-        # Create profile on the fly if authenticated via external provider (e.g. Supabase Auth)
-        user = UserProfile(
+        user = User(
             id=current_user.id,
             email=current_user.email or f"{current_user.id}@user.local",
-            display_name=current_user.email.split("@")[0] if current_user.email else "Student",
+            full_name=current_user.display_name or (current_user.email.split("@")[0] if current_user.email else "Student"),
         )
         db.add(user)
         db.commit()

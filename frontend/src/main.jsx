@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { api } from "./api/client.js";
 import "./styles.css";
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 const STORAGE_KEYS = {
   authToken: "syllabus-surgeon-auth-token",
@@ -3006,16 +3007,11 @@ export default function App() {
 
   async function fetchCloudWorkspaces(token) {
     try {
-      const res = await fetch(`${API}/api/workspaces`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const wsList = await res.json();
-        if (wsList && wsList.length > 0) {
-          setWorkspaces(wsList);
-          setCurrentWorkspaceId(wsList[0].id);
-          fetchWorkspaceCourses(wsList[0].id, token);
-        }
+      const wsList = await api.listWorkspaces(token);
+      if (wsList && wsList.length > 0) {
+        setWorkspaces(wsList);
+        setCurrentWorkspaceId(wsList[0].id);
+        fetchWorkspaceCourses(wsList[0].id, token);
       }
     } catch {
       // Offline fallback
@@ -3025,15 +3021,10 @@ export default function App() {
   async function fetchWorkspaceCourses(workspaceId, token) {
     if (!token || !workspaceId) return;
     try {
-      const res = await fetch(`${API}/api/workspaces/${workspaceId}/courses`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const cloudCourses = await res.json();
-        if (cloudCourses && cloudCourses.length > 0) {
-          setCourses(cloudCourses);
-          flattenAndSetAssessments(cloudCourses);
-        }
+      const cloudCourses = await api.getCourses(workspaceId, token);
+      if (cloudCourses && cloudCourses.length > 0) {
+        setCourses(cloudCourses);
+        flattenAndSetAssessments(cloudCourses);
       }
     } catch {
       // Offline fallback
@@ -3060,16 +3051,8 @@ export default function App() {
   async function handleCreateOrUpdateWorkspace(name, semester) {
     if (editingWorkspace && authToken) {
       try {
-        const res = await fetch(`${API}/api/workspaces/${editingWorkspace.id}`, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${authToken}`,
-          },
-          body: JSON.stringify({ name, semester }),
-        });
-        if (res.ok) {
-          const updated = await res.json();
+        const updated = await api.updateWorkspace(editingWorkspace.id, { name, semester }, authToken);
+        if (updated) {
           setWorkspaces((prev) => prev.map((w) => (w.id === updated.id ? updated : w)));
         }
       } catch {
@@ -3080,16 +3063,8 @@ export default function App() {
       }
     } else if (authToken) {
       try {
-        const res = await fetch(`${API}/api/workspaces`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${authToken}`,
-          },
-          body: JSON.stringify({ name, semester }),
-        });
-        if (res.ok) {
-          const created = await res.json();
+        const created = await api.createWorkspace({ name, semester }, authToken);
+        if (created) {
           setWorkspaces((prev) => [created, ...prev]);
           setCurrentWorkspaceId(created.id);
         }
@@ -3111,10 +3086,7 @@ export default function App() {
 
     if (authToken) {
       try {
-        await fetch(`${API}/api/workspaces/${workspaceId}`, {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${authToken}` },
-        });
+        await api.deleteWorkspace(workspaceId, authToken);
       } catch {
         // Fallback local delete
       }
@@ -3147,16 +3119,19 @@ export default function App() {
 
   function flattenAndSetAssessments(coursesList, targetMap = targetDates, completedMap = completedItems) {
     const list = coursesList.flatMap((course) =>
-      (course.items || []).map((it) => {
-        const id = getAssessmentId({ ...it, course_code: course.course_code });
+      (course.items || course.assessments || []).map((it) => {
+        const id = getAssessmentId({ ...it, course_code: course.course_code || course.code });
         return {
           ...it,
-          id,
-          title: it.item,
-          course_code: course.course_code,
-          course_name: course.course_name,
+          id: it.id || id,
+          title: it.item || it.title,
+          course_code: course.course_code || course.code,
+          course_name: course.course_name || course.name,
+          official_due_date: it.official_due_date || it.due_date || null,
+          due_date: it.official_due_date || it.due_date || null,
           target_date: targetMap[id] || it.target_date || "",
-          completed: Boolean(completedMap[id]?.completed || it.completed),
+          completed: Boolean(completedMap[id]?.completed || it.completed || it.status === "completed"),
+          priority_level: it.priority_level || it.priority || "medium",
         };
       })
     );
@@ -3202,6 +3177,9 @@ export default function App() {
 
     const formData = new FormData();
     formData.append("file", selectedFile);
+    if (currentWorkspaceId && currentWorkspaceId !== "default-ws") {
+      formData.append("workspace_id", currentWorkspaceId);
+    }
 
     try {
       setTimeout(() => setLoadingStage("Extracting subjects & assessment topics…"), 1200);
@@ -3242,7 +3220,7 @@ export default function App() {
     }
   }
 
-  function handleToggleComplete(itemToUpdate) {
+  async function handleToggleComplete(itemToUpdate) {
     const id = getAssessmentId(itemToUpdate);
     const currentlyDone = Boolean(completedItems[id]?.completed || itemToUpdate.completed);
 
@@ -3256,6 +3234,15 @@ export default function App() {
 
     setCompletedItems(updatedMap);
     localStorage.setItem(STORAGE_KEYS.completed, JSON.stringify(updatedMap));
+
+    // If item has a backend UUID and user is logged in, sync to PostgreSQL
+    if (authToken && itemToUpdate.id && !String(itemToUpdate.id).includes("|")) {
+      try {
+        await api.updateAssessment(itemToUpdate.id, { completed: !currentlyDone }, authToken);
+      } catch {
+        // Fallback local
+      }
+    }
 
     setAssessments((current) =>
       current.map((item) => {
@@ -3277,7 +3264,7 @@ export default function App() {
     );
   }
 
-  function handleSetTargetDate(itemToUpdate, newDateStr) {
+  async function handleSetTargetDate(itemToUpdate, newDateStr) {
     const id = getAssessmentId(itemToUpdate);
     const updatedMap = {
       ...targetDates,
@@ -3286,6 +3273,15 @@ export default function App() {
 
     setTargetDates(updatedMap);
     localStorage.setItem(STORAGE_KEYS.targetDates, JSON.stringify(updatedMap));
+
+    // If item has a backend UUID and user is logged in, sync to PostgreSQL
+    if (authToken && itemToUpdate.id && !String(itemToUpdate.id).includes("|")) {
+      try {
+        await api.updateAssessment(itemToUpdate.id, { target_date: newDateStr || null }, authToken);
+      } catch {
+        // Fallback local
+      }
+    }
 
     const updatedList = assessments.map((it) => {
       const isTarget =
@@ -3306,6 +3302,7 @@ export default function App() {
 
     setAssessments(updatedList);
   }
+
 
   // Export functions
   function handleExportICS() {

@@ -8,14 +8,22 @@ class Settings(BaseSettings):
     app_env: str = "development"
     frontend_url: str = "http://localhost:5173"
 
+    # Database connection URL (PostgreSQL default, with SQLite fallback support)
+    database_url: str = "postgresql+psycopg2://syllabus_user:syllabus_password@localhost:5432/syllabus_surgeon"
+
+    # JWT Authentication
+    jwt_secret_key: str = "syllabus-surgeon-dev-jwt-secret-key-32charsmin!"
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = 1440
+
+    # For backward compatibility
+    @property
+    def jwt_secret(self) -> str:
+        return self.jwt_secret_key
+
     supabase_url: str = ""
     supabase_anon_key: str = ""
     supabase_service_role_key: str = ""
-
-    database_url: str = "sqlite:///./syllabus_surgeon.db"
-
-    jwt_secret: str = "syllabus-surgeon-dev-jwt-secret-key-32charsmin!"
-    jwt_algorithm: str = "HS256"
 
     max_upload_size_mb: int = 10
 

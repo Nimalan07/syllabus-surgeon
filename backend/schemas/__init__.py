@@ -1,17 +1,23 @@
-from schemas import (
+from schemas.assessment import (
     AssessmentBase,
     AssessmentCreate,
     AssessmentResponse,
     AssessmentUpdate,
-    AuthResponse,
+)
+from schemas.course import (
     CourseBase,
     CourseCreate,
     CourseResponse,
     CourseUpdate,
+)
+from schemas.study_session import (
     StudySessionBase,
     StudySessionCreate,
     StudySessionResponse,
     StudySessionUpdate,
+)
+from schemas.workspace import (
+    AuthResponse,
     UserLogin,
     UserRegister,
     UserResponse,

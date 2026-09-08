@@ -1,13 +1,14 @@
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, time
 from sqlalchemy import (
-    Boolean,
     Date,
     DateTime,
     ForeignKey,
+    Integer,
     Numeric,
     String,
     Text,
+    Time,
     Uuid,
     func,
 )
@@ -16,8 +17,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from core.database import Base
 
 
-class UserProfile(Base):
-    __tablename__ = "user_profiles"
+class User(Base):
+    __tablename__ = "users"
 
     id: Mapped[uuid.UUID] = mapped_column(
         Uuid,
@@ -26,14 +27,14 @@ class UserProfile(Base):
     )
 
     email: Mapped[str] = mapped_column(
-        String(320),
+        String(255),
         unique=True,
         nullable=False,
         index=True,
     )
 
-    display_name: Mapped[str | None] = mapped_column(
-        String(120),
+    full_name: Mapped[str | None] = mapped_column(
+        String(150),
         nullable=True,
     )
 
@@ -45,13 +46,25 @@ class UserProfile(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
-        nullable=False,
     )
 
     workspaces: Mapped[list["Workspace"]] = relationship(
         back_populates="user",
         cascade="all, delete-orphan",
     )
+
+    # Helper property for backwards compatibility
+    @property
+    def display_name(self) -> str | None:
+        return self.full_name
+
+    @display_name.setter
+    def display_name(self, value: str | None):
+        self.full_name = value
+
+
+# Alias UserProfile to User for backward compatibility
+UserProfile = User
 
 
 class Workspace(Base):
@@ -65,45 +78,40 @@ class Workspace(Base):
 
     user_id: Mapped[uuid.UUID] = mapped_column(
         Uuid,
-        ForeignKey("user_profiles.id", ondelete="CASCADE"),
+        ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
 
     name: Mapped[str] = mapped_column(
-        String(160),
-        nullable=False,
+        String(150),
+        default="My Study Workspace",
     )
 
-    semester: Mapped[str | None] = mapped_column(
-        String(80),
+    target_date: Mapped[date | None] = mapped_column(
+        Date,
         nullable=True,
-    )
-
-    is_archived: Mapped[bool] = mapped_column(
-        Boolean,
-        default=False,
-        nullable=False,
     )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
-        nullable=False,
     )
 
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
         onupdate=func.now(),
-        nullable=False,
     )
 
-    user: Mapped["UserProfile"] = relationship(
-        back_populates="workspaces",
-    )
+    user: Mapped["User"] = relationship(back_populates="workspaces")
 
     courses: Mapped[list["Course"]] = relationship(
+        back_populates="workspace",
+        cascade="all, delete-orphan",
+    )
+
+    study_sessions: Mapped[list["StudySession"]] = relationship(
         back_populates="workspace",
         cascade="all, delete-orphan",
     )
@@ -125,20 +133,24 @@ class Course(Base):
         index=True,
     )
 
-    course_code: Mapped[str | None] = mapped_column(
-        String(40),
+    code: Mapped[str | None] = mapped_column(
+        String(50),
         nullable=True,
     )
 
-    course_name: Mapped[str] = mapped_column(
-        String(180),
+    name: Mapped[str] = mapped_column(
+        String(200),
         nullable=False,
+    )
+
+    description: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
     )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
-        nullable=False,
     )
 
     workspace: Mapped["Workspace"] = relationship(
@@ -149,6 +161,23 @@ class Course(Base):
         back_populates="course",
         cascade="all, delete-orphan",
     )
+
+    # Aliases for compatibility
+    @property
+    def course_code(self) -> str | None:
+        return self.code
+
+    @course_code.setter
+    def course_code(self, val: str | None):
+        self.code = val
+
+    @property
+    def course_name(self) -> str:
+        return self.name
+
+    @course_name.setter
+    def course_name(self, val: str):
+        self.name = val
 
 
 class Assessment(Base):
@@ -168,16 +197,21 @@ class Assessment(Base):
     )
 
     title: Mapped[str] = mapped_column(
-        String(220),
+        String(255),
         nullable=False,
     )
 
-    topic: Mapped[str | None] = mapped_column(
+    description: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
     )
 
-    due_date: Mapped[date | None] = mapped_column(
+    assessment_type: Mapped[str] = mapped_column(
+        String(50),
+        default="other",
+    )
+
+    official_due_date: Mapped[date | None] = mapped_column(
         Date,
         nullable=True,
     )
@@ -187,13 +221,43 @@ class Assessment(Base):
         nullable=True,
     )
 
+    priority: Mapped[str] = mapped_column(
+        String(30),
+        default="medium",
+    )
+
+    status: Mapped[str] = mapped_column(
+        String(30),
+        default="not_started",
+    )
+
+    estimated_hours: Mapped[float] = mapped_column(
+        Numeric(6, 2),
+        default=1,
+    )
+
+    completed_hours: Mapped[float] = mapped_column(
+        Numeric(6, 2),
+        default=0,
+    )
+
+    difficulty: Mapped[str | None] = mapped_column(
+        String(30),
+        nullable=True,
+    )
+
+    impact: Mapped[str | None] = mapped_column(
+        String(30),
+        nullable=True,
+    )
+
     weight_percent: Mapped[float | None] = mapped_column(
         Numeric(5, 2),
         nullable=True,
     )
 
-    priority_level: Mapped[str | None] = mapped_column(
-        String(40),
+    topic: Mapped[str | None] = mapped_column(
+        Text,
         nullable=True,
     )
 
@@ -207,23 +271,118 @@ class Assessment(Base):
         nullable=True,
     )
 
-    completed: Mapped[bool] = mapped_column(
-        Boolean,
-        default=False,
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+    )
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    course: Mapped["Course"] = relationship(
+        back_populates="assessments",
+    )
+
+    study_sessions: Mapped[list["StudySession"]] = relationship(
+        back_populates="assessment",
+        cascade="all, delete-orphan",
+    )
+
+    # Aliases & properties for compatibility
+    @property
+    def due_date(self) -> date | None:
+        return self.official_due_date
+
+    @due_date.setter
+    def due_date(self, val: date | None):
+        self.official_due_date = val
+
+    @property
+    def priority_level(self) -> str:
+        return self.priority
+
+    @priority_level.setter
+    def priority_level(self, val: str):
+        self.priority = val
+
+    @property
+    def completed(self) -> bool:
+        return self.status == "completed"
+
+    @completed.setter
+    def completed(self, val: bool):
+        self.status = "completed" if val else "not_started"
+
+
+class StudySession(Base):
+    __tablename__ = "study_sessions"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid,
+        ForeignKey("workspaces.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    assessment_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("assessments.id", ondelete="CASCADE"),
+        nullable=True,
+    )
+
+    session_date: Mapped[date] = mapped_column(
+        Date,
         nullable=False,
     )
 
-    completed_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True),
+    start_time: Mapped[time | None] = mapped_column(
+        Time,
+        nullable=True,
+    )
+
+    end_time: Mapped[time | None] = mapped_column(
+        Time,
+        nullable=True,
+    )
+
+    planned_minutes: Mapped[int] = mapped_column(
+        Integer,
+        default=30,
+    )
+
+    completed_minutes: Mapped[int] = mapped_column(
+        Integer,
+        default=0,
+    )
+
+    status: Mapped[str] = mapped_column(
+        String(30),
+        default="planned",
+    )
+
+    notes: Mapped[str | None] = mapped_column(
+        Text,
         nullable=True,
     )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
-        nullable=False,
     )
 
-    course: Mapped["Course"] = relationship(
-        back_populates="assessments",
+    workspace: Mapped["Workspace"] = relationship(
+        back_populates="study_sessions",
+    )
+
+    assessment: Mapped["Assessment | None"] = relationship(
+        back_populates="study_sessions",
     )

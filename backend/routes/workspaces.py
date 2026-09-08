@@ -5,8 +5,8 @@ from sqlalchemy.orm import Session, selectinload
 
 from core.auth import CurrentUser, get_current_user
 from core.database import get_db
-from models.database import Course, UserProfile, Workspace
-from models.workspace_schema import (
+from models.database import Course, StudySession, User, Workspace
+from schemas.workspace import (
     WorkspaceCreate,
     WorkspaceResponse,
     WorkspaceUpdate,
@@ -18,6 +18,19 @@ router = APIRouter(
 )
 
 
+def ensure_user_exists(db: Session, current_user: CurrentUser) -> User:
+    user = db.scalar(select(User).where(User.id == current_user.id))
+    if not user:
+        user = User(
+            id=current_user.id,
+            email=current_user.email or f"{current_user.id}@user.local",
+            full_name=current_user.display_name or (current_user.email.split("@")[0] if current_user.email else "Student"),
+        )
+        db.add(user)
+        db.commit()
+    return user
+
+
 @router.get(
     "",
     response_model=list[WorkspaceResponse],
@@ -26,20 +39,14 @@ def list_workspaces(
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    # Ensure user exists in user_profiles
-    user = db.scalar(select(UserProfile).where(UserProfile.id == current_user.id))
-    if not user:
-        user = UserProfile(
-            id=current_user.id,
-            email=current_user.email or f"{current_user.id}@user.local",
-            display_name=current_user.email.split("@")[0] if current_user.email else "Student",
-        )
-        db.add(user)
-        db.commit()
+    ensure_user_exists(db, current_user)
 
     statement = (
         select(Workspace)
-        .options(selectinload(Workspace.courses).selectinload(Course.assessments))
+        .options(
+            selectinload(Workspace.courses).selectinload(Course.assessments),
+            selectinload(Workspace.study_sessions).selectinload(StudySession.assessment),
+        )
         .where(Workspace.user_id == current_user.id)
         .order_by(Workspace.created_at.desc())
     )
@@ -51,7 +58,6 @@ def list_workspaces(
         default_workspace = Workspace(
             user_id=current_user.id,
             name="Fall 2026 Semester",
-            semester="Fall 2026",
         )
         db.add(default_workspace)
         db.commit()
@@ -71,21 +77,12 @@ def create_workspace(
     current_user: CurrentUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    # Ensure user profile exists
-    user = db.scalar(select(UserProfile).where(UserProfile.id == current_user.id))
-    if not user:
-        user = UserProfile(
-            id=current_user.id,
-            email=current_user.email or f"{current_user.id}@user.local",
-            display_name=current_user.email.split("@")[0] if current_user.email else "Student",
-        )
-        db.add(user)
-        db.commit()
+    ensure_user_exists(db, current_user)
 
     workspace = Workspace(
         user_id=current_user.id,
-        name=payload.name,
-        semester=payload.semester,
+        name=payload.name or "My Study Workspace",
+        target_date=payload.target_date,
     )
 
     db.add(workspace)
@@ -106,7 +103,10 @@ def get_workspace(
 ):
     workspace = db.scalar(
         select(Workspace)
-        .options(selectinload(Workspace.courses).selectinload(Course.assessments))
+        .options(
+            selectinload(Workspace.courses).selectinload(Course.assessments),
+            selectinload(Workspace.study_sessions).selectinload(StudySession.assessment),
+        )
         .where(
             Workspace.id == workspace_id,
             Workspace.user_id == current_user.id,
@@ -134,7 +134,10 @@ def update_workspace(
 ):
     workspace = db.scalar(
         select(Workspace)
-        .options(selectinload(Workspace.courses).selectinload(Course.assessments))
+        .options(
+            selectinload(Workspace.courses).selectinload(Course.assessments),
+            selectinload(Workspace.study_sessions).selectinload(StudySession.assessment),
+        )
         .where(
             Workspace.id == workspace_id,
             Workspace.user_id == current_user.id,
@@ -148,6 +151,8 @@ def update_workspace(
         )
 
     updates = payload.model_dump(exclude_unset=True)
+    if "semester" in updates:
+        updates.pop("semester")
 
     for field, value in updates.items():
         setattr(workspace, field, value)
