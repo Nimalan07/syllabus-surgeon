@@ -1,5 +1,6 @@
 import uuid
 from datetime import date, datetime, time
+from decimal import Decimal
 from sqlalchemy import (
     Date,
     DateTime,
@@ -86,6 +87,7 @@ class Workspace(Base):
     name: Mapped[str] = mapped_column(
         String(150),
         default="My Study Workspace",
+        nullable=False,
     )
 
     target_date: Mapped[date | None] = mapped_column(
@@ -162,6 +164,11 @@ class Course(Base):
         cascade="all, delete-orphan",
     )
 
+    study_sessions: Mapped[list["StudySession"]] = relationship(
+        back_populates="course",
+        cascade="all, delete-orphan",
+    )
+
     # Aliases for compatibility
     @property
     def course_code(self) -> str | None:
@@ -209,6 +216,7 @@ class Assessment(Base):
     assessment_type: Mapped[str] = mapped_column(
         String(50),
         default="other",
+        nullable=False,
     )
 
     official_due_date: Mapped[date | None] = mapped_column(
@@ -224,21 +232,25 @@ class Assessment(Base):
     priority: Mapped[str] = mapped_column(
         String(30),
         default="medium",
+        nullable=False,
     )
 
     status: Mapped[str] = mapped_column(
         String(30),
         default="not_started",
+        nullable=False,
     )
 
-    estimated_hours: Mapped[float] = mapped_column(
+    estimated_hours: Mapped[Decimal] = mapped_column(
         Numeric(6, 2),
-        default=1,
+        default=Decimal("1.00"),
+        nullable=False,
     )
 
-    completed_hours: Mapped[float] = mapped_column(
+    completed_hours: Mapped[Decimal] = mapped_column(
         Numeric(6, 2),
-        default=0,
+        default=Decimal("0.00"),
+        nullable=False,
     )
 
     difficulty: Mapped[str | None] = mapped_column(
@@ -326,10 +338,17 @@ class StudySession(Base):
         default=uuid.uuid4,
     )
 
-    workspace_id: Mapped[uuid.UUID] = mapped_column(
+    workspace_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid,
         ForeignKey("workspaces.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
+        index=True,
+    )
+
+    course_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid,
+        ForeignKey("courses.id", ondelete="CASCADE"),
+        nullable=True,
         index=True,
     )
 
@@ -356,17 +375,20 @@ class StudySession(Base):
 
     planned_minutes: Mapped[int] = mapped_column(
         Integer,
-        default=30,
+        default=60,
+        nullable=False,
     )
 
     completed_minutes: Mapped[int] = mapped_column(
         Integer,
         default=0,
+        nullable=False,
     )
 
     status: Mapped[str] = mapped_column(
         String(30),
         default="planned",
+        nullable=False,
     )
 
     notes: Mapped[str | None] = mapped_column(
@@ -379,10 +401,28 @@ class StudySession(Base):
         server_default=func.now(),
     )
 
-    workspace: Mapped["Workspace"] = relationship(
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        onupdate=func.now(),
+        nullable=True,
+    )
+
+    workspace: Mapped["Workspace | None"] = relationship(
+        back_populates="study_sessions",
+    )
+
+    course: Mapped["Course | None"] = relationship(
         back_populates="study_sessions",
     )
 
     assessment: Mapped["Assessment | None"] = relationship(
         back_populates="study_sessions",
     )
+
+    @property
+    def actual_minutes(self) -> int:
+        return self.completed_minutes
+
+    @actual_minutes.setter
+    def actual_minutes(self, val: int):
+        self.completed_minutes = val
