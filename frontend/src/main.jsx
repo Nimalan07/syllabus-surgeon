@@ -114,6 +114,185 @@ function toDateKey(date) {
   return `${year}-${month}-${day}`;
 }
 
+/* =========================================================================
+   STEP 11: CALENDAR HELPER FUNCTIONS
+   ========================================================================= */
+const CALENDAR_START_HOUR = 8;
+const CALENDAR_END_HOUR = 22;
+const SLOT_HEIGHT = 64;
+
+function getStartOfWeek(date = new Date()) {
+  const result = new Date(date);
+  const day = result.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+
+  result.setDate(result.getDate() + diff);
+  result.setHours(0, 0, 0, 0);
+
+  return result;
+}
+
+function formatDateKey(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function parseTimeToMinutes(time) {
+  if (!time) return 0;
+
+  const [hours, minutes] = time.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+function formatMinutesToTime(minutes) {
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+
+  return `${String(hours).padStart(2, "0")}:${String(
+    remainingMinutes
+  ).padStart(2, "0")}`;
+}
+
+function formatCalendarTime(minutes) {
+  const hours = Math.floor(minutes / 60);
+  const suffix = hours >= 12 ? "PM" : "AM";
+  const displayHour = hours % 12 || 12;
+
+  return `${displayHour} ${suffix}`;
+}
+
+function getWeekDates(weekStart) {
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(weekStart);
+    date.setDate(weekStart.getDate() + index);
+    return date;
+  });
+}
+
+function getSessionStyle(session) {
+  const startTime = session.start_time || session.startTime;
+  const endTime = session.end_time || session.endTime;
+  const startMinutes = parseTimeToMinutes(startTime || "09:00");
+  const endMinutes = parseTimeToMinutes(endTime || "10:00");
+
+  const calendarStartMinutes = CALENDAR_START_HOUR * 60;
+  const top = Math.max(
+    0,
+    ((startMinutes - calendarStartMinutes) / 60) * SLOT_HEIGHT
+  );
+
+  const height = Math.max(
+    36,
+    ((endMinutes - startMinutes) / 60) * SLOT_HEIGHT
+  );
+
+  return {
+    top,
+    height,
+  };
+}
+
+/* =========================================================================
+   STEP 12: ANALYTICS HELPER FUNCTIONS
+   ========================================================================= */
+function calculateAnalytics(assessments = [], studySessions = []) {
+  const totalAssessments = assessments.length;
+
+  const completedAssessments = assessments.filter(
+    (assessment) => assessment.status === "completed"
+  ).length;
+
+  const inProgressAssessments = assessments.filter(
+    (assessment) => assessment.status === "in_progress"
+  ).length;
+
+  const plannedMinutes = studySessions.reduce(
+    (total, session) =>
+      total + Number(session.planned_minutes || session.plannedMinutes || 0),
+    0
+  );
+
+  const actualMinutes = studySessions.reduce(
+    (total, session) =>
+      total + Number(session.actual_minutes || session.actualMinutes || 0),
+    0
+  );
+
+  const completionPercentage =
+    totalAssessments === 0
+      ? 0
+      : Math.round((completedAssessments / totalAssessments) * 100);
+
+  return {
+    totalAssessments,
+    completedAssessments,
+    inProgressAssessments,
+    plannedMinutes,
+    actualMinutes,
+    completionPercentage,
+  };
+}
+
+function calculateCourseProgress(courses = [], assessments = []) {
+  return courses.map((course) => {
+    const courseAssessments = assessments.filter(
+      (assessment) =>
+        (assessment.course_id || assessment.courseId) === course.id ||
+        (assessment.course_code || assessment.courseCode) === (course.course_code || course.code)
+    );
+
+    const completed = courseAssessments.filter(
+      (assessment) => assessment.status === "completed"
+    ).length;
+
+    const total = courseAssessments.length;
+
+    return {
+      course,
+      completed,
+      total,
+      percentage: total === 0 ? 0 : Math.round((completed / total) * 100),
+    };
+  });
+}
+
+function getAssessmentTiming(assessment) {
+  const targetDate =
+    assessment.target_date ||
+    assessment.targetDate ||
+    assessment.official_due_date ||
+    assessment.officialDueDate ||
+    assessment.due_date;
+
+  if (!targetDate) {
+    return "No target date";
+  }
+
+  if (assessment.status === "completed") {
+    return "Completed";
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const dueDate = new Date(`${targetDate}T00:00:00`);
+  const difference =
+    Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+
+  if (difference < 0) {
+    return `${Math.abs(difference)} day(s) overdue`;
+  }
+
+  if (difference === 0) {
+    return "Due today";
+  }
+
+  return `${difference} day(s) remaining`;
+}
+
 function getMonthCalendarDays(monthDate) {
   const year = monthDate.getFullYear();
   const month = monthDate.getMonth();
@@ -2412,6 +2591,363 @@ function WorkspaceModal({ isOpen, onClose, onSave, onDelete, editingWorkspace })
 }
 
 /* =========================================================================
+   STEP 11: WEEKLY CALENDAR VIEW COMPONENT
+   ========================================================================= */
+function WeeklyCalendar({
+  weekStart,
+  sessions = [],
+  courses = [],
+  assessments = [],
+  onPreviousWeek,
+  onNextWeek,
+  onToday,
+  onCreateSession,
+  onEditSession,
+}) {
+  const weekDates = getWeekDates(weekStart);
+
+  return (
+    <section className="calendar-panel">
+      <div className="calendar-toolbar">
+        <div>
+          <h2>Weekly study calendar</h2>
+          <p>
+            Plan focused study sessions and track your available time.
+          </p>
+        </div>
+
+        <div className="calendar-toolbar-actions">
+          <button type="button" onClick={onPreviousWeek}>
+            Previous
+          </button>
+
+          <button type="button" onClick={onToday}>
+            Today
+          </button>
+
+          <button type="button" onClick={onNextWeek}>
+            Next
+          </button>
+        </div>
+      </div>
+
+      <div className="calendar-scroll">
+        <div className="calendar-grid">
+          <div className="calendar-time-header" />
+
+          {weekDates.map((date) => (
+            <div
+              key={formatDateKey(date)}
+              className="calendar-day-header"
+            >
+              <strong>
+                {date.toLocaleDateString(undefined, {
+                  weekday: "short",
+                })}
+              </strong>
+
+              <span>{date.getDate()}</span>
+            </div>
+          ))}
+
+          <div className="calendar-time-column">
+            {Array.from(
+              {
+                length:
+                  CALENDAR_END_HOUR - CALENDAR_START_HOUR + 1,
+              },
+              (_, index) => {
+                const hour = CALENDAR_START_HOUR + index;
+
+                return (
+                  <div
+                    key={hour}
+                    className="calendar-time-label"
+                    style={{ height: SLOT_HEIGHT }}
+                  >
+                    {formatCalendarTime(hour * 60)}
+                  </div>
+                );
+              }
+            )}
+          </div>
+
+          {weekDates.map((date) => {
+            const dateKey = formatDateKey(date);
+
+            const daySessions = sessions.filter(
+              (session) =>
+                (session.session_date || session.sessionDate) === dateKey
+            );
+
+            return (
+              <div
+                key={dateKey}
+                className="calendar-day-column"
+                onClick={(event) => {
+                  if (event.target !== event.currentTarget) return;
+                  onCreateSession(date, 9);
+                }}
+              >
+                {Array.from(
+                  {
+                    length:
+                      CALENDAR_END_HOUR - CALENDAR_START_HOUR,
+                  },
+                  (_, index) => (
+                    <button
+                      type="button"
+                      key={index}
+                      className="calendar-slot"
+                      onClick={() =>
+                        onCreateSession(
+                          date,
+                          CALENDAR_START_HOUR + index
+                        )
+                      }
+                      aria-label={`Create session on ${dateKey} at ${
+                        CALENDAR_START_HOUR + index
+                      }:00`}
+                    />
+                  )
+                )}
+
+                {daySessions.map((session) => {
+                  const style = getSessionStyle(session);
+
+                  const course = courses.find(
+                    (item) =>
+                      item.id === (session.course_id || session.courseId)
+                  );
+
+                  const assessment = assessments.find(
+                    (item) =>
+                      item.id === (session.assessment_id || session.assessmentId)
+                  );
+
+                  return (
+                    <button
+                      type="button"
+                      key={session.id}
+                      className="calendar-session"
+                      style={{
+                        top: style.top,
+                        height: style.height,
+                      }}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onEditSession(session);
+                      }}
+                    >
+                      <strong>
+                        {course?.code || course?.course_code || course?.name || course?.course_name || "Study"}
+                      </strong>
+
+                      <span>
+                        {assessment?.title || assessment?.item || session.notes || "Study session"}
+                      </span>
+
+                      <small>
+                        {session.start_time || session.startTime || "09:00"}–{session.end_time || session.endTime || "10:00"}
+                      </small>
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* =========================================================================
+   STEP 12: ANALYTICS & PROGRESS COMPONENTS
+   ========================================================================= */
+function AnalyticsCards({ analytics }) {
+  return (
+    <section className="analytics-grid">
+      <div className="analytics-card">
+        <span className="analytics-label">Total assessments</span>
+        <strong>{analytics.totalAssessments}</strong>
+      </div>
+
+      <div className="analytics-card">
+        <span className="analytics-label">Completed</span>
+        <strong>{analytics.completedAssessments}</strong>
+      </div>
+
+      <div className="analytics-card">
+        <span className="analytics-label">Completion rate</span>
+        <strong>{analytics.completionPercentage}%</strong>
+      </div>
+
+      <div className="analytics-card">
+        <span className="analytics-label">Planned study time</span>
+        <strong>
+          {Math.round(analytics.plannedMinutes / 60)}h
+        </strong>
+      </div>
+
+      <div className="analytics-card">
+        <span className="analytics-label">Actual study time</span>
+        <strong>
+          {Math.round(analytics.actualMinutes / 60)}h
+        </strong>
+      </div>
+    </section>
+  );
+}
+
+function ProgressBar({ percentage }) {
+  return (
+    <div className="progress-track">
+      <div
+        className="progress-fill"
+        style={{
+          width: `${Math.min(100, Math.max(0, percentage))}%`,
+        }}
+      />
+    </div>
+  );
+}
+
+function CourseProgress({ courseProgress }) {
+  return (
+    <section className="course-progress-panel">
+      <div className="section-heading">
+        <div>
+          <h2>Course progress</h2>
+          <p>Track assessment completion across all courses.</p>
+        </div>
+      </div>
+
+      {courseProgress.length === 0 ? (
+        <p className="empty-state">
+          Add a course to start tracking progress.
+        </p>
+      ) : (
+        <div className="course-progress-list">
+          {courseProgress.map((item) => (
+            <div
+              key={item.course.id || item.course.code || item.course.name}
+              className="course-progress-row"
+            >
+              <div className="course-progress-heading">
+                <div>
+                  <strong>
+                    {item.course.code || item.course.course_code
+                      ? `${item.course.code || item.course.course_code} · ${item.course.name || item.course.course_name}`
+                      : item.course.name || item.course.course_name}
+                  </strong>
+
+                  <span>
+                    {item.completed} of {item.total} completed
+                  </span>
+                </div>
+
+                <strong>{item.percentage}%</strong>
+              </div>
+
+              <ProgressBar percentage={item.percentage} />
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function AssessmentTimingSummary({ assessments }) {
+  const overdue = assessments.filter((assessment) => {
+    const targetDate =
+      assessment.target_date ||
+      assessment.targetDate ||
+      assessment.official_due_date ||
+      assessment.officialDueDate ||
+      assessment.due_date;
+
+    if (!targetDate || assessment.status === "completed") {
+      return false;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return new Date(`${targetDate}T00:00:00`) < today;
+  });
+
+  const upcoming = assessments
+    .filter((assessment) => assessment.status !== "completed")
+    .filter((assessment) => {
+      const targetDate =
+        assessment.target_date ||
+        assessment.targetDate ||
+        assessment.official_due_date ||
+        assessment.officialDueDate ||
+        assessment.due_date;
+
+      return Boolean(targetDate);
+    })
+    .sort((a, b) => {
+      const dateA =
+        a.target_date || a.targetDate || a.official_due_date || a.officialDueDate || a.due_date;
+      const dateB =
+        b.target_date || b.targetDate || b.official_due_date || b.officialDueDate || b.due_date;
+
+      return new Date(dateA) - new Date(dateB);
+    })
+    .slice(0, 5);
+
+  return (
+    <section className="timing-summary-grid">
+      <div className="timing-panel">
+        <h2>Overdue</h2>
+
+        {overdue.length === 0 ? (
+          <p className="empty-state">No overdue assessments.</p>
+        ) : (
+          <div className="timing-list">
+            {overdue.slice(0, 5).map((assessment) => (
+              <div
+                key={assessment.id || getAssessmentId(assessment)}
+                className="timing-list-item overdue-item"
+              >
+                <strong>{assessment.title || assessment.item}</strong>
+                <span>{getAssessmentTiming(assessment)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="timing-panel">
+        <h2>Upcoming</h2>
+
+        {upcoming.length === 0 ? (
+          <p className="empty-state">
+            No upcoming assessments.
+          </p>
+        ) : (
+          <div className="timing-list">
+            {upcoming.map((assessment) => (
+              <div
+                key={assessment.id || getAssessmentId(assessment)}
+                className="timing-list-item"
+              >
+                <strong>{assessment.title || assessment.item}</strong>
+                <span>{getAssessmentTiming(assessment)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+/* =========================================================================
    PLANNER DASHBOARD (COMMAND CENTER CONTAINER)
    ========================================================================= */
 function PlannerDashboard({
@@ -2421,6 +2957,7 @@ function PlannerDashboard({
   targetDates,
   completedItems,
   studySessions,
+  setStudySessions,
   onToggleComplete,
   onSetTargetDate,
   onSaveAssessmentChanges,
@@ -2450,6 +2987,146 @@ function PlannerDashboard({
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
 
+  // Step 11: Calendar State
+  const [calendarWeekStart, setCalendarWeekStart] = useState(
+    getStartOfWeek(new Date())
+  );
+  const [selectedCalendarSession, setSelectedCalendarSession] = useState(null);
+  const [calendarModalOpen, setCalendarModalOpen] = useState(false);
+  const [calendarForm, setCalendarForm] = useState({
+    course_id: "",
+    assessment_id: "",
+    session_date: formatDateKey(new Date()),
+    start_time: "09:00",
+    end_time: "10:00",
+    planned_minutes: 60,
+    status: "planned",
+    notes: "",
+  });
+
+  // Step 12: Analytics calculations
+  const analytics = calculateAnalytics(assessments, studySessions);
+  const courseProgress = calculateCourseProgress(courses, assessments);
+
+  // Step 11: Week navigation handlers
+  function moveCalendarWeek(offset) {
+    const nextWeek = new Date(calendarWeekStart);
+    nextWeek.setDate(nextWeek.getDate() + offset * 7);
+    setCalendarWeekStart(nextWeek);
+  }
+
+  function openNewCalendarSession(date, hour = 9) {
+    const startMinutes = hour * 60;
+    const endMinutes = startMinutes + 60;
+
+    setSelectedCalendarSession(null);
+
+    setCalendarForm({
+      course_id: courses[0]?.id || "",
+      assessment_id: "",
+      session_date: formatDateKey(date),
+      start_time: formatMinutesToTime(startMinutes),
+      end_time: formatMinutesToTime(endMinutes),
+      planned_minutes: 60,
+      status: "planned",
+      notes: "",
+    });
+
+    setCalendarModalOpen(true);
+  }
+
+  function openEditCalendarSession(session) {
+    setSelectedCalendarSession(session);
+
+    setCalendarForm({
+      course_id: session.course_id || session.courseId || "",
+      assessment_id: session.assessment_id || session.assessmentId || "",
+      session_date: session.session_date || session.sessionDate || formatDateKey(new Date()),
+      start_time: session.start_time || session.startTime || "09:00",
+      end_time: session.end_time || session.endTime || "10:00",
+      planned_minutes: session.planned_minutes || session.plannedMinutes || 60,
+      status: session.status || "planned",
+      notes: session.notes || "",
+    });
+
+    setCalendarModalOpen(true);
+  }
+
+  // Step 11: Save and Delete handlers
+  async function handleSaveCalendarSession() {
+    const payload = {
+      course_id: calendarForm.course_id,
+      assessment_id: calendarForm.assessment_id || null,
+      session_date: calendarForm.session_date,
+      start_time: calendarForm.start_time,
+      end_time: calendarForm.end_time,
+      planned_minutes: Number(calendarForm.planned_minutes),
+      status: calendarForm.status,
+      notes: calendarForm.notes || null,
+    };
+
+    try {
+      if (selectedCalendarSession) {
+        const updated = await updateStudySession(
+          selectedCalendarSession.id,
+          payload
+        );
+
+        if (setStudySessions) {
+          setStudySessions((previous) =>
+            previous.map((session) =>
+              session.id === updated.id ? updated : session
+            )
+          );
+        } else if (onUpdateSession) {
+          onUpdateSession(selectedCalendarSession.id, payload);
+        }
+      } else {
+        const created = await createStudySession(payload);
+
+        if (setStudySessions) {
+          setStudySessions((previous) => [...previous, created]);
+        }
+      }
+
+      setCalendarModalOpen(false);
+      setSelectedCalendarSession(null);
+    } catch (error) {
+      console.error("Failed to save study session:", error);
+      alert("Unable to save this study session.");
+    }
+  }
+
+  async function handleDeleteCalendarSession() {
+    if (!selectedCalendarSession) return;
+
+    const confirmed = window.confirm(
+      "Delete this study session permanently?"
+    );
+
+    if (!confirmed) return;
+
+    try {
+      await deleteStudySession(selectedCalendarSession.id);
+
+      if (setStudySessions) {
+        setStudySessions((previous) =>
+          previous.filter(
+            (session) => session.id !== selectedCalendarSession.id
+          )
+        );
+      } else if (onDeleteSession) {
+        onDeleteSession(selectedCalendarSession.id);
+      }
+
+      setCalendarModalOpen(false);
+      setSelectedCalendarSession(null);
+    } catch (error) {
+      console.error("Failed to delete study session:", error);
+      alert("Unable to delete this study session.");
+    }
+  }
+
   const activeWorkspace = useMemo(() => {
     return workspaces.find((w) => w.id === currentWorkspaceId) || workspaces[0] || { name: "Default Semester" };
   }, [workspaces, currentWorkspaceId]);
@@ -2459,13 +3136,13 @@ function PlannerDashboard({
     const list = [];
     const seen = new Set();
     courses.forEach((c) => {
-      const key = c.course_code || c.course_name;
+      const key = c.course_code || c.code || c.course_name || c.name;
       if (!seen.has(key)) {
         seen.add(key);
         const count = assessments.filter(
-          (a) => a.course_code === c.course_code || a.course_name === c.course_name
+          (a) => (a.course_code || a.courseCode) === (c.course_code || c.code) || (a.course_name || a.courseName) === (c.course_name || c.name)
         ).length;
-        list.push({ code: c.course_code, name: c.course_name, count });
+        list.push({ code: c.course_code || c.code, name: c.course_name || c.name, count });
       }
     });
     return list;
@@ -2483,18 +3160,18 @@ function PlannerDashboard({
 
     assessments.forEach((item) => {
       if (courseFilter !== "all") {
-        const matchesCode = item.course_code === courseFilter;
-        const matchesName = item.course_name === courseFilter;
+        const matchesCode = (item.course_code || item.courseCode) === courseFilter;
+        const matchesName = (item.course_name || item.courseName) === courseFilter;
         if (!matchesCode && !matchesName) return;
       }
 
       total++;
       const id = getAssessmentId(item);
-      const isDone = completedItems[id]?.completed || item.completed;
+      const isDone = item.status === "completed" || Boolean(completedItems[id]?.completed || item.completed);
       if (isDone) {
         completed++;
       } else {
-        const p = item.priority_level || item.status;
+        const p = item.priority_level || item.priority || item.status;
         if (p === "overdue") overdue++;
         else if (p === "urgent") urgent++;
         else if (p === "medium") medium++;
@@ -2521,12 +3198,12 @@ function PlannerDashboard({
   const filteredAssessments = useMemo(() => {
     return assessments.filter((item) => {
       const id = getAssessmentId(item);
-      const isDone = Boolean(completedItems[id]?.completed || item.completed);
+      const isDone = item.status === "completed" || Boolean(completedItems[id]?.completed || item.completed);
 
       // Course filter
       if (courseFilter !== "all") {
-        const matchesCode = item.course_code === courseFilter;
-        const matchesName = item.course_name === courseFilter;
+        const matchesCode = (item.course_code || item.courseCode) === courseFilter;
+        const matchesName = (item.course_name || item.courseName) === courseFilter;
         if (!matchesCode && !matchesName) return false;
       }
 
@@ -2535,7 +3212,7 @@ function PlannerDashboard({
         if (!isDone) return false;
       } else if (priorityFilter !== "all") {
         if (isDone) return false;
-        if ((item.priority_level || item.status) !== priorityFilter) return false;
+        if ((item.priority_level || item.priority || item.status) !== priorityFilter) return false;
       }
 
       // Search query
@@ -2543,8 +3220,8 @@ function PlannerDashboard({
         const q = searchQuery.toLowerCase().trim();
         const title = (item.title || item.item || "").toLowerCase();
         const topic = (item.topic || "").toLowerCase();
-        const course = (item.course_name || "").toLowerCase();
-        const code = (item.course_code || "").toLowerCase();
+        const course = (item.course_name || item.courseName || "").toLowerCase();
+        const code = (item.course_code || item.courseCode || "").toLowerCase();
         if (!title.includes(q) && !topic.includes(q) && !course.includes(q) && !code.includes(q)) {
           return false;
         }
@@ -2723,7 +3400,7 @@ function PlannerDashboard({
 
             <button
               className="btn-header-action"
-              onClick={() => onOpenCreateSession(null)}
+              onClick={() => openNewCalendarSession(new Date(), 9)}
               title="Schedule a new study session"
             >
               ⏱ Session
@@ -2769,7 +3446,7 @@ function PlannerDashboard({
               onClick={() => setActiveTab("calendar")}
             >
               <span>📅</span>
-              Monthly Calendar
+              Weekly Calendar
             </button>
 
             <button
@@ -2851,7 +3528,7 @@ function PlannerDashboard({
           <div className="sidebar-help">
             <strong>Need to schedule study time?</strong>
             <p>Schedule a focused session with course milestones.</p>
-            <button onClick={() => onOpenCreateSession(null)}>+ Schedule Session</button>
+            <button onClick={() => openNewCalendarSession(new Date(), 9)}>+ Schedule Session</button>
           </div>
         </aside>
 
@@ -2877,7 +3554,7 @@ function PlannerDashboard({
               </span>
               <h1>
                 {activeTab === "calendar"
-                  ? "Academic schedule & target dates."
+                  ? "Weekly schedule & study sessions."
                   : activeTab === "daily"
                   ? "Your daily study itinerary."
                   : activeTab === "sessions"
@@ -2936,18 +3613,16 @@ function PlannerDashboard({
 
           {/* Tab View Switching */}
           {activeTab === "calendar" && (
-            <CalendarView
+            <WeeklyCalendar
+              weekStart={calendarWeekStart}
+              sessions={studySessions}
+              courses={courses}
               assessments={assessments}
-              targetDates={targetDates}
-              courseFilter={courseFilter}
-              setCourseFilter={setCourseFilter}
-              priorityFilter={priorityFilter}
-              setPriorityFilter={setPriorityFilter}
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-              subjectOptions={subjectOptions}
-              getPriorityCount={getPriorityCount}
-              onClickDetail={setSelectedDrawerItem}
+              onPreviousWeek={() => moveCalendarWeek(-1)}
+              onNextWeek={() => moveCalendarWeek(1)}
+              onToday={() => setCalendarWeekStart(getStartOfWeek(new Date()))}
+              onCreateSession={openNewCalendarSession}
+              onEditSession={openEditCalendarSession}
             />
           )}
 
@@ -2967,7 +3642,7 @@ function PlannerDashboard({
               studySessions={studySessions}
               courses={courses}
               assessments={assessments}
-              onOpenCreateSession={onOpenCreateSession}
+              onOpenCreateSession={openNewCalendarSession}
               onUpdateSession={onUpdateSession}
               onDeleteSession={onDeleteSession}
             />
@@ -2994,12 +3669,17 @@ function PlannerDashboard({
           )}
 
           {activeTab === "progress" && (
-            <ProgressDashboardView
-              courses={courses}
-              assessments={assessments}
-              completedItems={completedItems}
-              onSelectSubjectFilter={handleSelectSubject}
-            />
+            <>
+              <AnalyticsCards analytics={analytics} />
+              <CourseProgress courseProgress={courseProgress} />
+              <AssessmentTimingSummary assessments={assessments} />
+              <ProgressDashboardView
+                courses={courses}
+                assessments={assessments}
+                completedItems={completedItems}
+                onSelectSubjectFilter={handleSelectSubject}
+              />
+            </>
           )}
 
           {activeTab === "plan" && (
@@ -3016,6 +3696,28 @@ function PlannerDashboard({
               </div>
             ) : (
               <>
+                {/* Step 12: Dashboard Analytics & Progress */}
+                <AnalyticsCards analytics={analytics} />
+
+                <CourseProgress courseProgress={courseProgress} />
+
+                <AssessmentTimingSummary assessments={assessments} />
+
+                {/* Step 11: Weekly Calendar */}
+                <WeeklyCalendar
+                  weekStart={calendarWeekStart}
+                  sessions={studySessions}
+                  courses={courses}
+                  assessments={assessments}
+                  onPreviousWeek={() => moveCalendarWeek(-1)}
+                  onNextWeek={() => moveCalendarWeek(1)}
+                  onToday={() =>
+                    setCalendarWeekStart(getStartOfWeek(new Date()))
+                  }
+                  onCreateSession={openNewCalendarSession}
+                  onEditSession={openEditCalendarSession}
+                />
+
                 {/* Filters & Search Toolbar */}
                 <div className="filters-container">
                   <div className="filters-top-row">
@@ -3077,7 +3779,7 @@ function PlannerDashboard({
                   {filteredAssessments.length > 0 ? (
                     filteredAssessments.map((item, index) => {
                       const id = getAssessmentId(item);
-                      const isCompleted = Boolean(completedItems[id]?.completed || item.completed);
+                      const isCompleted = item.status === "completed" || Boolean(completedItems[id]?.completed || item.completed);
                       const targetDate = targetDates[id] || item.target_date || "";
 
                       return (
@@ -3108,19 +3810,191 @@ function PlannerDashboard({
         </section>
       </div>
 
+      {/* Step 11: Calendar Modal */}
+      {calendarModalOpen && (
+        <div className="modal-backdrop" onClick={() => setCalendarModalOpen(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>
+                {selectedCalendarSession
+                  ? "Edit study session"
+                  : "Create study session"}
+              </h2>
+
+              <button
+                type="button"
+                className="modal-close"
+                onClick={() => setCalendarModalOpen(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <label>
+              Course
+              <select
+                value={calendarForm.course_id}
+                onChange={(event) =>
+                  setCalendarForm((previous) => ({
+                    ...previous,
+                    course_id: event.target.value,
+                  }))
+                }
+              >
+                <option value="">Select course</option>
+
+                {courses.map((course) => (
+                  <option key={course.id} value={course.id}>
+                    {course.code || course.course_code
+                      ? `${course.code || course.course_code} · ${course.name || course.course_name}`
+                      : course.name || course.course_name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              Assessment
+              <select
+                value={calendarForm.assessment_id}
+                onChange={(event) =>
+                  setCalendarForm((previous) => ({
+                    ...previous,
+                    assessment_id: event.target.value,
+                  }))
+                }
+              >
+                <option value="">General study</option>
+
+                {assessments
+                  .filter(
+                    (assessment) =>
+                      !calendarForm.course_id ||
+                      (assessment.course_id || assessment.courseId) === calendarForm.course_id
+                  )
+                  .map((assessment) => (
+                    <option key={assessment.id} value={assessment.id}>
+                      {assessment.title || assessment.item}
+                    </option>
+                  ))}
+              </select>
+            </label>
+
+            <label>
+              Date
+              <input
+                type="date"
+                value={calendarForm.session_date}
+                onChange={(event) =>
+                  setCalendarForm((previous) => ({
+                    ...previous,
+                    session_date: event.target.value,
+                  }))
+                }
+              />
+            </label>
+
+            <div className="modal-two-column">
+              <label>
+                Start time
+                <input
+                  type="time"
+                  value={calendarForm.start_time}
+                  onChange={(event) =>
+                    setCalendarForm((previous) => ({
+                      ...previous,
+                      start_time: event.target.value,
+                    }))
+                  }
+                />
+              </label>
+
+              <label>
+                End time
+                <input
+                  type="time"
+                  value={calendarForm.end_time}
+                  onChange={(event) =>
+                    setCalendarForm((previous) => ({
+                      ...previous,
+                      end_time: event.target.value,
+                    }))
+                  }
+                />
+              </label>
+            </div>
+
+            <label>
+              Planned minutes
+              <input
+                type="number"
+                min="1"
+                value={calendarForm.planned_minutes}
+                onChange={(event) =>
+                  setCalendarForm((previous) => ({
+                    ...previous,
+                    planned_minutes: event.target.value,
+                  }))
+                }
+              />
+            </label>
+
+            <label>
+              Notes
+              <textarea
+                value={calendarForm.notes}
+                onChange={(event) =>
+                  setCalendarForm((previous) => ({
+                    ...previous,
+                    notes: event.target.value,
+                  }))
+                }
+              />
+            </label>
+
+            <div className="modal-actions">
+              {selectedCalendarSession && (
+                <button
+                  type="button"
+                  className="danger-button"
+                  onClick={handleDeleteCalendarSession}
+                >
+                  Delete
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setCalendarModalOpen(false)}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                className="primary-button"
+                onClick={handleSaveCalendarSession}
+              >
+                Save session
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Assessment Detail Drawer / Panel */}
       {selectedDrawerItem && (
         <AssessmentDetailDrawer
           item={selectedDrawerItem}
           onClose={() => setSelectedDrawerItem(null)}
           targetDate={targetDates[getAssessmentId(selectedDrawerItem)] || selectedDrawerItem.target_date}
-          isCompleted={Boolean(completedItems[getAssessmentId(selectedDrawerItem)]?.completed || selectedDrawerItem.completed)}
+          isCompleted={selectedDrawerItem.status === "completed" || Boolean(completedItems[getAssessmentId(selectedDrawerItem)]?.completed || selectedDrawerItem.completed)}
           onToggleComplete={onToggleComplete}
           onSetTargetDate={onSetTargetDate}
           onSaveAssessmentChanges={onSaveAssessmentChanges}
           onCompletedHoursChange={onCompletedHoursChange}
           onPractice={handleOpenPracticeStudio}
-          onScheduleSession={onOpenCreateSession}
+          onScheduleSession={openNewCalendarSession}
         />
       )}
     </main>
@@ -4336,6 +5210,7 @@ export default function App() {
           targetDates={targetDates}
           completedItems={completedItems}
           studySessions={studySessions}
+          setStudySessions={setStudySessions}
           onToggleComplete={handleToggleComplete}
           onSetTargetDate={handleSetTargetDate}
           onSaveAssessmentChanges={saveAssessmentChanges}
