@@ -1,8 +1,8 @@
 from uuid import UUID
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.auth import CurrentUser, bearer_scheme, get_current_user
 from core.database import get_db
 from models.database import Assessment, Course, Workspace
 from services.pdf_parser import (
@@ -67,7 +67,7 @@ async def upload_syllabus(
         # 3. If workspace_id is provided and valid, auto-persist to PostgreSQL
         if workspace_id:
             try:
-                ws_uuid = UUID(workspace_id)
+                ws_uuid = UUID(str(workspace_id).strip())
                 workspace = db.scalar(select(Workspace).where(Workspace.id == ws_uuid))
                 if workspace:
                     for c in result.courses:
@@ -75,7 +75,7 @@ async def upload_syllabus(
                             workspace_id=ws_uuid,
                             code=c.course_code,
                             name=c.course_name or "Course",
-                            description=c.description,
+                            description=getattr(c, "description", None) or getattr(c, "semester", None),
                         )
                         db.add(db_course)
                         db.flush()
@@ -86,7 +86,7 @@ async def upload_syllabus(
                                 title=it.item,
                                 topic=it.topic,
                                 official_due_date=it.due_date,
-                                target_date=it.target_date,
+                                target_date=getattr(it, "target_date", None),
                                 weight_percent=it.weight_percent,
                                 priority=it.priority_level or "medium",
                                 status="not_started",
@@ -97,7 +97,7 @@ async def upload_syllabus(
 
                     db.commit()
             except Exception as persist_err:
-                # Log but don't fail response
+                # Log but don't fail upload response
                 print(f"Warning: could not auto-persist to DB: {persist_err}")
 
         return result
