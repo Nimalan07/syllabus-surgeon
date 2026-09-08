@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic
+pydantic-settings
+python-dotenv
+httpx
+supabase
+PyJWT
+sqlalchemy
+psycopg2-binary
+passlib[bcrypt]
+email-validator
+pytest
+pdfplumber
