@@ -2,6 +2,11 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { api } from "./api/client.js";
 import {
+  clearAuthToken,
+  getCurrentUser,
+  loginUser,
+  registerUser,
+  checkBackendHealth,
   getWorkspaces,
   createWorkspace,
   getWorkspace,
@@ -1959,8 +1964,139 @@ function ProgressDashboardView({
 }
 
 /* =========================================================================
-   AUTH & WORKSPACE MODALS (Phase 3A)
+   STEP 13: AUTHENTICATION SCREEN & MODALS
    ========================================================================= */
+
+function AuthScreen({ onAuthenticated }) {
+  const [mode, setMode] = useState("login");
+
+  const [form, setForm] = useState({
+    email: "",
+    password: "",
+    full_name: "",
+  });
+
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+
+    setError("");
+    setLoading(true);
+
+    try {
+      const result =
+        mode === "login"
+          ? await loginUser({
+              email: form.email,
+              password: form.password,
+            })
+          : await registerUser(form);
+
+      onAuthenticated(result.user);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="auth-screen">
+      <form className="auth-card" onSubmit={handleSubmit}>
+        <h1>
+          {mode === "login"
+            ? "Welcome back"
+            : "Create your account"}
+        </h1>
+
+        <p>
+          {mode === "login"
+            ? "Sign in to continue to your study planner."
+            : "Create an account to save your learning workspace."}
+        </p>
+
+        {mode === "register" && (
+          <label>
+            Full name
+            <input
+              type="text"
+              value={form.full_name}
+              onChange={(event) =>
+                setForm((previous) => ({
+                  ...previous,
+                  full_name: event.target.value,
+                }))
+              }
+            />
+          </label>
+        )}
+
+        <label>
+          Email
+          <input
+            type="email"
+            required
+            value={form.email}
+            onChange={(event) =>
+              setForm((previous) => ({
+                ...previous,
+                email: event.target.value,
+              }))
+            }
+          />
+        </label>
+
+        <label>
+          Password
+          <input
+            type="password"
+            required
+            minLength={8}
+            value={form.password}
+            onChange={(event) =>
+              setForm((previous) => ({
+                ...previous,
+                password: event.target.value,
+              }))
+            }
+          />
+        </label>
+
+        {error && (
+          <p className="auth-error">
+            {error}
+          </p>
+        )}
+
+        <button type="submit" disabled={loading}>
+          {loading
+            ? "Please wait..."
+            : mode === "login"
+              ? "Sign in"
+              : "Create account"}
+        </button>
+
+        <button
+          type="button"
+          className="text-button"
+          onClick={() =>
+            setMode((previous) =>
+              previous === "login"
+                ? "register"
+                : "login"
+            )
+          }
+        >
+          {mode === "login"
+            ? "Create a new account"
+            : "Already have an account? Sign in"}
+        </button>
+      </form>
+    </div>
+  );
+}
 
 function AuthModal({ isOpen, onClose, onLoginSuccess }) {
   const [mode, setMode] = useState("login"); // "login" | "register"
@@ -3007,6 +3143,12 @@ function PlannerDashboard({
   // Step 12: Analytics calculations
   const analytics = calculateAnalytics(assessments, studySessions);
   const courseProgress = calculateCourseProgress(courses, assessments);
+  const plannerStatus =
+    analytics.completionPercentage >= 75
+      ? "On track"
+      : analytics.completionPercentage >= 40
+        ? "Needs focus"
+        : "Getting started";
 
   // Step 11: Week navigation handlers
   function moveCalendarWeek(offset) {
@@ -3575,6 +3717,10 @@ function PlannerDashboard({
             </div>
 
             <div className="dashboard-intro-right">
+              <div className="dashboard-intro-badge">
+                <span>Planner status</span>
+                <strong>{plannerStatus}</strong>
+              </div>
               <div className="date-chip">{todayStr}</div>
               <span className="method-tag">
                 {currentUser ? "☁ Cloud Synced · PostgreSQL" : "⚡ Local Workspace Mode"}
@@ -4614,12 +4760,15 @@ export default function App() {
   }
 
   function handleLogout() {
+    clearAuthToken();
     setAuthToken(null);
     setCurrentUser(null);
     localStorage.removeItem(STORAGE_KEYS.authToken);
     localStorage.removeItem(STORAGE_KEYS.user);
     setWorkspaces([{ id: "default-ws", name: "Default Semester", semester: "Current" }]);
     setCurrentWorkspaceId("default-ws");
+    setCourses([]);
+    setAssessments([]);
     setStudySessions([]);
   }
 

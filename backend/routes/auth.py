@@ -1,100 +1,107 @@
-import uuid
+from uuid import uuid4
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.auth import (
-    CurrentUser,
+from core.auth_dependencies import get_current_user
+from core.database import get_db
+from core.security import (
     create_access_token,
-    get_current_user,
     hash_password,
     verify_password,
 )
-from core.database import get_db
 from models.database import User, Workspace
-from schemas.workspace import (
-    AuthResponse,
-    UserLogin,
-    UserRegister,
+from schemas.auth import (
+    LoginRequest,
+    RegisterRequest,
+    TokenResponse,
     UserResponse,
 )
 
+
 router = APIRouter(
     prefix="/api/auth",
-    tags=["auth"],
+    tags=["Authentication"],
 )
 
 
 @router.post(
     "/register",
-    response_model=AuthResponse,
+    response_model=TokenResponse,
     status_code=status.HTTP_201_CREATED,
 )
 def register(
-    payload: UserRegister,
+    payload: RegisterRequest,
     db: Session = Depends(get_db),
 ):
-    existing_user = db.scalar(
-        select(User).where(User.email == payload.email.lower().strip())
+    existing_user = (
+        db.query(User)
+        .filter(User.email == payload.email.lower().strip())
+        .first()
     )
 
     if existing_user:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="An account with this email already exists.",
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An account with this email already exists",
         )
 
-    user_id = uuid.uuid4()
-    full_name = payload.full_name or payload.display_name or payload.email.split("@")[0]
-
-    new_user = User(
-        id=user_id,
+    user = User(
+        id=uuid4(),
         email=payload.email.lower().strip(),
-        full_name=full_name,
-        hashed_password=hash_password(payload.password),
+        password_hash=hash_password(payload.password),
+        full_name=payload.full_name,
     )
+
+    db.add(user)
+    db.flush()
 
     # Automatically create default starter workspace for this user
     default_workspace = Workspace(
-        id=uuid.uuid4(),
-        user_id=user_id,
+        id=uuid4(),
+        user_id=user.id,
         name="Fall 2026 Semester",
     )
-
-    db.add(new_user)
     db.add(default_workspace)
     db.commit()
-    db.refresh(new_user)
+    db.refresh(user)
 
-    token = create_access_token(user_id=new_user.id, email=new_user.email)
+    token = create_access_token(user.id)
 
-    return AuthResponse(
+    return TokenResponse(
+        access_token=token,
         token=token,
-        user=UserResponse.model_validate(new_user),
+        user=UserResponse.model_validate(user),
     )
 
 
 @router.post(
     "/login",
-    response_model=AuthResponse,
+    response_model=TokenResponse,
 )
 def login(
-    payload: UserLogin,
+    payload: LoginRequest,
     db: Session = Depends(get_db),
 ):
-    user = db.scalar(
-        select(User).where(User.email == payload.email.lower().strip())
+    user = (
+        db.query(User)
+        .filter(User.email == payload.email.lower().strip())
+        .first()
     )
 
-    if not user or not verify_password(payload.password, user.hashed_password or ""):
+    if not user or not verify_password(
+        payload.password,
+        user.password_hash or getattr(user, "hashed_password", "") or "",
+    ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password.",
+            detail="Invalid email or password",
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
-    token = create_access_token(user_id=user.id, email=user.email)
+    token = create_access_token(user.id)
 
-    return AuthResponse(
+    return TokenResponse(
+        access_token=token,
         token=token,
         user=UserResponse.model_validate(user),
     )
@@ -105,24 +112,9 @@ def login(
     response_model=UserResponse,
 )
 def get_me(
-    current_user: CurrentUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    user = db.scalar(
-        select(User).where(User.id == current_user.id)
-    )
-
-    if not user:
-        user = User(
-            id=current_user.id,
-            email=current_user.email or f"{current_user.id}@user.local",
-            full_name=current_user.display_name or (current_user.email.split("@")[0] if current_user.email else "Student"),
-        )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-
-    return UserResponse.model_validate(user)
+    return current_user
 
 
 @router.post(

@@ -35,11 +35,11 @@ class User(Base):
     )
 
     full_name: Mapped[str | None] = mapped_column(
-        String(150),
+        String(200),
         nullable=True,
     )
 
-    hashed_password: Mapped[str | None] = mapped_column(
+    password_hash: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True,
     )
@@ -53,6 +53,14 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan",
     )
+
+    @property
+    def hashed_password(self) -> str | None:
+        return self.password_hash
+
+    @hashed_password.setter
+    def hashed_password(self, value: str | None):
+        self.password_hash = value
 
     # Helper property for backwards compatibility
     @property
@@ -83,6 +91,14 @@ class Workspace(Base):
         nullable=False,
         index=True,
     )
+
+    @property
+    def owner_id(self) -> uuid.UUID:
+        return self.user_id
+
+    @owner_id.setter
+    def owner_id(self, value: uuid.UUID):
+        self.user_id = value
 
     name: Mapped[str] = mapped_column(
         String(150),

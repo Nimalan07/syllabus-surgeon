@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -16,14 +17,20 @@ app = FastAPI(
     version="3.0.0",
 )
 
+allowed_origins = [
+    origin.strip()
+    for origin in os.getenv(
+        "CORS_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000",
+    ).split(",")
+    if origin.strip()
+]
+if settings.frontend_url and settings.frontend_url not in allowed_origins:
+    allowed_origins.append(settings.frontend_url)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        settings.frontend_url,
-        "*",
-    ],
+    allow_origins=allowed_origins if allowed_origins else ["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -54,6 +61,6 @@ def root():
 def health_check():
     return {
         "status": "ok",
+        "service": "syllabus-surgeon",
         "app": settings.app_name,
-        "environment": settings.app_env,
     }

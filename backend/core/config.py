@@ -12,14 +12,15 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg2://syllabus_user:syllabus_password@localhost:5432/syllabus_surgeon"
 
     # JWT Authentication
-    jwt_secret_key: str = "syllabus-surgeon-dev-jwt-secret-key-32charsmin!"
+    secret_key: str = "syllabus-surgeon-dev-secret-key-32charsmin!"
+    jwt_secret_key: str = "syllabus-surgeon-dev-secret-key-32charsmin!"
     jwt_algorithm: str = "HS256"
-    access_token_expire_minutes: int = 1440
+    access_token_expire_minutes: int = 60 * 24
 
     # For backward compatibility
     @property
     def jwt_secret(self) -> str:
-        return self.jwt_secret_key
+        return self.secret_key or self.jwt_secret_key
 
     supabase_url: str = ""
     supabase_anon_key: str = ""

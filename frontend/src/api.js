@@ -1,30 +1,49 @@
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || "http://localhost:8000";
+  import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.VITE_API_URL ||
+  "http://localhost:8000";
 
-async function request(path, options = {}) {
-  const token = localStorage.getItem("syllabus-surgeon-auth-token") || "";
-  const headers = {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(options.headers || {}),
-  };
+export function getAuthToken() {
+  return (
+    window.localStorage.getItem("access_token") ||
+    window.localStorage.getItem("syllabus-surgeon-auth-token") ||
+    ""
+  );
+}
+
+export function saveAuthToken(token) {
+  window.localStorage.setItem("access_token", token);
+  window.localStorage.setItem("syllabus-surgeon-auth-token", token);
+}
+
+export function clearAuthToken() {
+  window.localStorage.removeItem("access_token");
+  window.localStorage.removeItem("syllabus-surgeon-auth-token");
+  window.localStorage.removeItem("syllabus-surgeon-user");
+}
+
+export async function request(path, options = {}) {
+  const token = getAuthToken();
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...options,
-    headers,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token
+        ? {
+            Authorization: `Bearer ${token}`,
+          }
+        : {}),
+      ...(options.headers || {}),
+    },
   });
 
   if (!response.ok) {
-    let message = `Request failed with status ${response.status}`;
+    const errorBody = await response.json().catch(() => ({}));
 
-    try {
-      const errorData = await response.json();
-      message = errorData.detail || message;
-    } catch {
-      // Keep the default error message when the response is not JSON.
-    }
-
-    throw new Error(message);
+    throw new Error(
+      errorBody.detail || `Request failed with status ${response.status}`
+    );
   }
 
   if (response.status === 204) {
@@ -32,6 +51,42 @@ async function request(path, options = {}) {
   }
 
   return response.json();
+}
+
+export async function registerUser(payload) {
+  const result = await request("/api/auth/register", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+
+  const token = result.access_token || result.token;
+  if (token) {
+    saveAuthToken(token);
+  }
+
+  return result;
+}
+
+export async function loginUser(payload) {
+  const result = await request("/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+
+  const token = result.access_token || result.token;
+  if (token) {
+    saveAuthToken(token);
+  }
+
+  return result;
+}
+
+export async function getCurrentUser() {
+  return request("/api/auth/me");
+}
+
+export async function checkBackendHealth() {
+  return request("/health");
 }
 
 export function getWorkspaces() {

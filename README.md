@@ -1,40 +1,68 @@
 # Syllabus Surgeon
 
-AI-powered syllabus-to-study-system converter.
+AI-powered syllabus-to-study-system converter and smart academic planner.
 
-## Features
+## Main features
 
-- Upload a syllabus PDF
-- Extract text with `pdfplumber`
-- Use OpenAI-compatible LLM (Ollama locally or Groq cloud) to extract structured syllabus items
-- Validate output with Pydantic
-- Rank tasks using deterministic urgency × grade impact scoring
-- Generate practice questions for the highest-priority topic
-- Flag unclear dates instead of silently guessing
+* **User registration and login**: JWT-based authentication with bcrypt password hashing and user-specific workspaces.
+* **Workspace management**: Multiple semester workspaces with independent course portfolios and study targets.
+* **Course and assessment management**: Complete CRUD support with topic extraction, grade weightings, estimated hours, and completed hours.
+* **Official deadline and personal target date tracking**: Separate tracking for institutional due dates and personal preparation targets.
+* **Weekly study calendar**: Interactive Monday–Sunday study session scheduling with 8 AM–10 PM time blocks.
+* **Persistent study sessions**: Full study session management backed by PostgreSQL with real-time updates.
+* **Course-wise progress analytics**: Live analytics cards, overall completion rates, and individual course progress bars.
+* **Overdue and upcoming assessment tracking**: Automatic countdowns and overdue flags for timely study intervention.
+* **AI practice studio**: Intelligent practice question generator for syllabus topics with explanations and multiple question types.
 
-## Run locally
+---
 
-### Backend
+## Running locally
 
-```bash
+### 1. Start PostgreSQL
+
+```powershell
+docker run --name syllabus-postgres `
+  -e POSTGRES_USER=syllabus_user `
+  -e POSTGRES_PASSWORD=syllabus_password `
+  -e POSTGRES_DB=syllabus_surgeon `
+  -p 5432:5432 `
+  -d postgres:16
+```
+
+Or start an existing container:
+
+```powershell
+docker start syllabus-postgres
+```
+
+### 2. Start the backend
+
+```powershell
 cd backend
 python -m venv .venv
 # Windows: .venv\Scripts\activate
 # macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env
+alembic upgrade head
 uvicorn main:app --reload --port 8000
 ```
 
-### Frontend
+### 3. Start the frontend
 
-```bash
+```powershell
 cd frontend
 npm install
 npm run dev
 ```
 
-Set `VITE_API_URL=http://localhost:8000` in `frontend/.env` if needed.
+### 4. Open the application
+
+Open the URL shown by Vite:
+```
+http://localhost:5173
+```
+
+---
 
 ## LLM Provider Configuration
 
@@ -53,7 +81,6 @@ The backend uses an OpenAI-compatible interface supporting both local and cloud 
    OLLAMA_BASE_URL=http://localhost:11434/v1
    OLLAMA_MODEL=llama3.2:3b
    ```
-   *No API key required. Your syllabus stays completely on your machine.*
 
 ### Option B — Groq (Fast cloud fallback)
 
