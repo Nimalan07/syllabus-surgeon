@@ -1,6 +1,29 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { api } from "./api/client.js";
+import {
+  getWorkspaces,
+  createWorkspace,
+  getWorkspace,
+  updateWorkspace,
+  deleteWorkspace,
+  getCourses,
+  createCourse,
+  getCourse,
+  updateCourse,
+  deleteCourse,
+  getAssessments,
+  createAssessment,
+  getAssessment,
+  updateAssessment,
+  deleteAssessment,
+  getStudySessions,
+  createStudySession,
+  getStudySession,
+  updateStudySession,
+  deleteStudySession,
+} from "./api.js";
+import { normalizeAssessment, normalizeStudySession } from "./dataTransform.js";
 import "./styles.css";
 
 const API = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || "http://localhost:8000";
@@ -2971,43 +2994,91 @@ export default function App() {
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [resetModalOpen, setResetModalOpen] = useState(false);
 
-  // Initialize from LocalStorage and Cloud
+  // Initialize from API / Cloud / LocalStorage
   useEffect(() => {
-    try {
-      const savedToken = localStorage.getItem(STORAGE_KEYS.authToken);
-      const savedUser = localStorage.getItem(STORAGE_KEYS.user);
-      const savedPlan = localStorage.getItem(STORAGE_KEYS.plan);
-      const savedTargetDates = localStorage.getItem(STORAGE_KEYS.targetDates);
-      const savedCompleted = localStorage.getItem(STORAGE_KEYS.completed);
+    let cancelled = false;
 
-      const targets = savedTargetDates ? JSON.parse(savedTargetDates) : {};
-      const completed = savedCompleted ? JSON.parse(savedCompleted) : {};
+    async function loadInitialData() {
+      try {
+        const savedToken = localStorage.getItem(STORAGE_KEYS.authToken);
+        const savedUser = localStorage.getItem(STORAGE_KEYS.user);
+        const savedPlan = localStorage.getItem(STORAGE_KEYS.plan);
+        const savedTargetDates = localStorage.getItem(STORAGE_KEYS.targetDates);
+        const savedCompleted = localStorage.getItem(STORAGE_KEYS.completed);
 
-      if (savedTargetDates) setTargetDates(targets);
-      if (savedCompleted) setCompletedItems(completed);
+        const targets = savedTargetDates ? JSON.parse(savedTargetDates) : {};
+        const completed = savedCompleted ? JSON.parse(savedCompleted) : {};
 
-      if (savedToken && savedUser) {
-        setAuthToken(savedToken);
-        setCurrentUser(JSON.parse(savedUser));
-        fetchCloudWorkspaces(savedToken);
-      }
+        if (savedTargetDates) setTargetDates(targets);
+        if (savedCompleted) setCompletedItems(completed);
 
-      if (savedPlan) {
-        const parsed = JSON.parse(savedPlan);
-        if (parsed?.courses?.length) {
-          setCourses(parsed.courses);
-          setWarnings(parsed.warnings || []);
-          flattenAndSetAssessments(parsed.courses, targets, completed);
+        if (savedToken && savedUser) {
+          setAuthToken(savedToken);
+          setCurrentUser(JSON.parse(savedUser));
+        }
+
+        // 1. Fetch workspaces from PostgreSQL API
+        const wsList = await getWorkspaces();
+        if (cancelled) return;
+
+        if (wsList && wsList.length > 0) {
+          setWorkspaces(wsList);
+          const activeWs = wsList[0];
+          setCurrentWorkspaceId(activeWs.id);
+
+          // Fetch courses from active workspace
+          const cloudCourses = await getCourses(activeWs.id);
+          if (cancelled) return;
+
+          if (cloudCourses && cloudCourses.length > 0) {
+            setCourses(cloudCourses);
+            const allAssessments = [];
+            for (const course of cloudCourses) {
+              const assessmentsList = await getAssessments(course.id);
+              assessmentsList.forEach((a) => {
+                allAssessments.push(normalizeAssessment(a, course));
+              });
+            }
+            if (!cancelled && allAssessments.length > 0) {
+              flattenAndSetAssessments(cloudCourses, targets, completed);
+            }
+          }
+        } else if (savedPlan) {
+          const parsed = JSON.parse(savedPlan);
+          if (parsed?.courses?.length) {
+            setCourses(parsed.courses);
+            setWarnings(parsed.warnings || []);
+            flattenAndSetAssessments(parsed.courses, targets, completed);
+          }
+        }
+      } catch (err) {
+        // Fallback to local storage
+        try {
+          const savedPlan = localStorage.getItem(STORAGE_KEYS.plan);
+          if (savedPlan) {
+            const parsed = JSON.parse(savedPlan);
+            if (parsed?.courses?.length) {
+              setCourses(parsed.courses);
+              setWarnings(parsed.warnings || []);
+              flattenAndSetAssessments(parsed.courses);
+            }
+          }
+        } catch {
+          // Ignore fallback error
         }
       }
-    } catch {
-      // Fallback
     }
+
+    loadInitialData();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function fetchCloudWorkspaces(token) {
     try {
-      const wsList = await api.listWorkspaces(token);
+      const wsList = await getWorkspaces();
       if (wsList && wsList.length > 0) {
         setWorkspaces(wsList);
         setCurrentWorkspaceId(wsList[0].id);
@@ -3019,9 +3090,9 @@ export default function App() {
   }
 
   async function fetchWorkspaceCourses(workspaceId, token) {
-    if (!token || !workspaceId) return;
+    if (!workspaceId) return;
     try {
-      const cloudCourses = await api.getCourses(workspaceId, token);
+      const cloudCourses = await getCourses(workspaceId);
       if (cloudCourses && cloudCourses.length > 0) {
         setCourses(cloudCourses);
         flattenAndSetAssessments(cloudCourses);
@@ -3030,6 +3101,7 @@ export default function App() {
       // Offline fallback
     }
   }
+
 
   function handleLoginSuccess(token, user) {
     setAuthToken(token);
@@ -3235,10 +3307,10 @@ export default function App() {
     setCompletedItems(updatedMap);
     localStorage.setItem(STORAGE_KEYS.completed, JSON.stringify(updatedMap));
 
-    // If item has a backend UUID and user is logged in, sync to PostgreSQL
-    if (authToken && itemToUpdate.id && !String(itemToUpdate.id).includes("|")) {
+    // If item has a backend UUID, sync to PostgreSQL
+    if (itemToUpdate.id && !String(itemToUpdate.id).includes("|")) {
       try {
-        await api.updateAssessment(itemToUpdate.id, { completed: !currentlyDone }, authToken);
+        await updateAssessment(itemToUpdate.id, { completed: !currentlyDone });
       } catch {
         // Fallback local
       }
@@ -3274,10 +3346,10 @@ export default function App() {
     setTargetDates(updatedMap);
     localStorage.setItem(STORAGE_KEYS.targetDates, JSON.stringify(updatedMap));
 
-    // If item has a backend UUID and user is logged in, sync to PostgreSQL
-    if (authToken && itemToUpdate.id && !String(itemToUpdate.id).includes("|")) {
+    // If item has a backend UUID, sync to PostgreSQL
+    if (itemToUpdate.id && !String(itemToUpdate.id).includes("|")) {
       try {
-        await api.updateAssessment(itemToUpdate.id, { target_date: newDateStr || null }, authToken);
+        await updateAssessment(itemToUpdate.id, { target_date: newDateStr || null });
       } catch {
         // Fallback local
       }
