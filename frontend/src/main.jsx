@@ -31,6 +31,205 @@ import {
 import { normalizeAssessment, normalizeStudySession } from "./dataTransform.js";
 import "./styles.css";
 
+/* Generic Standard SVG Icons */
+function CalendarIcon({ className = "generic-icon", size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+      <line x1="16" y1="2" x2="16" y2="6"></line>
+      <line x1="8" y1="2" x2="8" y2="6"></line>
+      <line x1="3" y1="10" x2="21" y2="10"></line>
+    </svg>
+  );
+}
+
+function ClockIcon({ className = "generic-icon", size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <circle cx="12" cy="12" r="10"></circle>
+      <polyline points="12 6 12 12 16 14"></polyline>
+    </svg>
+  );
+}
+
+function CheckIcon({ className = "generic-icon", size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <polyline points="20 6 9 17 4 12"></polyline>
+    </svg>
+  );
+}
+
+function CheckCircleIcon({ className = "generic-icon", size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+      <polyline points="22 4 12 14.01 9 11.01"></polyline>
+    </svg>
+  );
+}
+
+function FolderIcon({ className = "generic-icon", size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+    </svg>
+  );
+}
+
+function BookIcon({ className = "generic-icon", size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+    </svg>
+  );
+}
+
+function ChartIcon({ className = "generic-icon", size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <line x1="18" y1="20" x2="18" y2="10"></line>
+      <line x1="12" y1="20" x2="12" y2="4"></line>
+      <line x1="6" y1="20" x2="6" y2="14"></line>
+    </svg>
+  );
+}
+
+function LayersIcon({ className = "generic-icon", size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+      <polyline points="2 17 12 22 22 17"></polyline>
+      <polyline points="2 12 12 17 22 12"></polyline>
+    </svg>
+  );
+}
+
+function ListTodoIcon({ className = "generic-icon", size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <rect x="3" y="5" width="6" height="6" rx="1"></rect>
+      <path d="m3 17 2 2 4-4"></path>
+      <path d="M13 6h8"></path>
+      <path d="M13 12h8"></path>
+      <path d="M13 18h8"></path>
+    </svg>
+  );
+}
+
+function FileTextIcon({ className = "generic-icon", size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+      <polyline points="14 2 14 8 20 8"></polyline>
+      <line x1="16" y1="13" x2="8" y2="13"></line>
+      <line x1="16" y1="17" x2="8" y2="17"></line>
+      <polyline points="10 9 9 9 8 9"></polyline>
+    </svg>
+  );
+}
+
+function AlertTriangleIcon({ className = "generic-icon", size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+      <line x1="12" y1="9" x2="12" y2="13"></line>
+      <line x1="12" y1="17" x2="12.01" y2="17"></line>
+    </svg>
+  );
+}
+
+function TargetIcon({ className = "generic-icon", size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <circle cx="12" cy="12" r="10"></circle>
+      <circle cx="12" cy="12" r="6"></circle>
+      <circle cx="12" cy="12" r="2"></circle>
+    </svg>
+  );
+}
+
+function SettingsIcon({ className = "generic-icon", size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <circle cx="12" cy="12" r="3"></circle>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+    </svg>
+  );
+}
+
+function UploadCloudIcon({ className = "generic-icon", size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <polyline points="16 16 12 12 8 16"></polyline>
+      <line x1="12" y1="12" x2="12" y2="21"></line>
+      <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"></path>
+      <polyline points="16 16 12 12 8 16"></polyline>
+    </svg>
+  );
+}
+
+function HelpCircleIcon({ className = "generic-icon", size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <circle cx="12" cy="12" r="10"></circle>
+      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+      <line x1="12" y1="17" x2="12.01" y2="17"></line>
+    </svg>
+  );
+}
+
+function UserIcon({ className = "generic-icon", size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+      <circle cx="12" cy="7" r="4"></circle>
+    </svg>
+  );
+}
+
+function DownloadIcon({ className = "generic-icon", size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+      <polyline points="7 10 12 15 17 10"></polyline>
+      <line x1="12" y1="15" x2="12" y2="3"></line>
+    </svg>
+  );
+}
+
+function PrinterIcon({ className = "generic-icon", size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <polyline points="6 9 6 2 18 2 18 9"></polyline>
+      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+      <rect x="6" y="14" width="12" height="8"></rect>
+    </svg>
+  );
+}
+
+function RefreshCwIcon({ className = "generic-icon", size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <polyline points="23 4 23 10 17 10"></polyline>
+      <polyline points="1 20 1 14 7 14"></polyline>
+      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+    </svg>
+  );
+}
+
+function GridIcon({ className = "generic-icon", size = 16 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <rect x="3" y="3" width="7" height="7"></rect>
+      <rect x="14" y="3" width="7" height="7"></rect>
+      <rect x="14" y="14" width="7" height="7"></rect>
+      <rect x="3" y="14" width="7" height="7"></rect>
+    </svg>
+  );
+}
+
 const API = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 const STORAGE_KEYS = {
@@ -374,7 +573,7 @@ function generateICSFile(assessments, targetDates) {
       lines.push(`UID:due-${idx}-${dueClean}@syllabussurgeon.local`);
       lines.push(`DTSTAMP:${new Date().toISOString().replace(/[-:]/g, "").split(".")[0]}Z`);
       lines.push(`DTSTART;VALUE=DATE:${dueClean}`);
-      lines.push(`SUMMARY:📅 [DUE] ${escapeICS(title)} (${escapeICS(item.course_code || "Course")})`);
+      lines.push(`SUMMARY:[DUE] ${escapeICS(title)} (${escapeICS(item.course_code || "Course")})`);
       lines.push(
         `DESCRIPTION:${escapeICS(
           `Course: ${course}\nAssessment: ${title}\nGrade Weight: ${weight}\nPriority: ${status.toUpperCase()}\nTopics: ${item.topic || "N/A"}\nWhy Prioritized: ${item.why_prioritized || ""}\nRecommended Action: ${item.recommended_action || ""}`
@@ -392,7 +591,7 @@ function generateICSFile(assessments, targetDates) {
       lines.push(`UID:target-${idx}-${targetClean}@syllabussurgeon.local`);
       lines.push(`DTSTAMP:${new Date().toISOString().replace(/[-:]/g, "").split(".")[0]}Z`);
       lines.push(`DTSTART;VALUE=DATE:${targetClean}`);
-      lines.push(`SUMMARY:🎯 [TARGET] Prep: ${escapeICS(title)} (${escapeICS(item.course_code || "Course")})`);
+      lines.push(`SUMMARY:[TARGET] Prep: ${escapeICS(title)} (${escapeICS(item.course_code || "Course")})`);
       lines.push(
         `DESCRIPTION:${escapeICS(
           `Target Study Date for: ${title}\nOfficial Due Date: ${item.due_date || "Not set"}\nGrade Weight: ${weight}\nTopics to revise: ${item.topic || "N/A"}`
@@ -750,7 +949,7 @@ function AssessmentDetailDrawer({
                 onScheduleSession(item);
               }}
             >
-              <span>⏱ Schedule a study session</span>
+              <span><ClockIcon size={14} /> Schedule study session</span>
               <span>+</span>
             </button>
           )}
@@ -763,7 +962,7 @@ function AssessmentDetailDrawer({
                 onPractice(item);
               }}
             >
-              <span>✦ Practice this topic</span>
+              <span><BookIcon size={14} /> Practice this topic</span>
               <span>→</span>
             </button>
           )}
@@ -780,71 +979,55 @@ function AssessmentCard({
   item,
   targetDate,
   isCompleted,
+  isTargetActive,
   onToggleComplete,
   onSetTargetDate,
   onSaveAssessmentChanges,
   onCompletedHoursChange,
-  onPractice,
   onClickDetail,
+  onPractice,
 }) {
-  const title = item.title || item.item;
-  const currentStatus = isCompleted ? "completed" : item.status || "not_started";
-  const priority = item.priority || item.priority_level || "medium";
-  const statusText = isCompleted ? "Completed" : getStatusText(item);
-  const weight = item.weight_percent != null ? item.weight_percent : item.weight;
-  const officialDue = item.officialDueDate || item.official_due_date || item.due_date;
-  const estimatedHrs = item.estimatedHours ?? item.estimated_hours ?? 1;
-  const completedHrs = item.completedHours ?? item.completed_hours ?? 0;
+  const priority = item.priority_level || item.status || "unranked";
+  const weight = item.weight_percent != null ? `${item.weight_percent}%` : "N/A";
+  const dueDateStr = item.due_date ? formatDate(item.due_date) : "Not specified";
 
   return (
     <article
-      className={`assessment-card ${isCompleted ? "is-completed" : ""}`}
+      className={`assessment-card ${priority} ${isCompleted ? "completed" : ""}`}
       onClick={() => onClickDetail(item)}
     >
-      <div className="assessment-top">
-        <div>
-          <p className="course-label">{getCourseLabel(item)}</p>
-          <h3 className="card-clickable-title">{title}</h3>
-        </div>
-
-        <div className="assessment-top-right" onClick={(e) => e.stopPropagation()}>
-          <button
-            className={`btn-complete-toggle ${isCompleted ? "completed" : ""}`}
-            onClick={() => onToggleComplete(item)}
-            title={isCompleted ? "Mark as uncompleted" : "Mark as completed"}
-          >
-            {isCompleted ? "✓ Completed" : "○ Mark complete"}
-          </button>
-          <PriorityBadge status={isCompleted ? "completed" : priority} />
-        </div>
+      <div className="card-top">
+        <div className="course-code-tag">{item.course_code || "Course"}</div>
+        <PriorityBadge status={isCompleted ? "completed" : priority} />
       </div>
 
-      <div className="topic-box">
-        <span className="topic-label">Topics covered</span>
-        <p>{item.topic || "Topics not specified in the syllabus."}</p>
-      </div>
+      <h3 className="card-clickable-title">{item.title || item.item}</h3>
 
-      <div className="assessment-meta">
-        <div>
-          <span>Official deadline</span>
-          <strong>{formatDate(officialDue)}</strong>
+      {item.topic && (
+        <div className="topic-line">
+          <span className="topic-pill">{item.topic}</span>
+        </div>
+      )}
+
+      <div className="assessment-meta-grid">
+        <div className="meta-item">
+          <span>Official due</span>
+          <strong>{dueDateStr}</strong>
         </div>
 
-        <div>
-          <span>Your target</span>
-          <strong style={{ color: targetDate ? "var(--target)" : "var(--muted)" }}>
-            {targetDate ? formatDate(targetDate) : "Not set"}
-          </strong>
-        </div>
-
-        <div>
+        <div className="meta-item">
           <span>Grade weight</span>
-          <strong>{weight != null ? `${weight}%` : "Not specified"}</strong>
+          <strong>{weight}</strong>
         </div>
 
-        <div>
-          <span>Study progress</span>
-          <strong>{completedHrs} / {estimatedHrs} hrs</strong>
+        <div className="meta-item">
+          <span>Estimated study</span>
+          <strong>{item.estimated_hours || 1} hrs</strong>
+        </div>
+
+        <div className="meta-item">
+          <span>Logged study</span>
+          <strong>{item.completed_hours || 0} hrs</strong>
         </div>
       </div>
 
@@ -853,7 +1036,7 @@ function AssessmentCard({
         item.date_confidence !== "user_set" &&
         priority !== "unranked" &&
         !isCompleted && (
-          <div className="warning-banner">⚠ Date was inferred and needs confirmation</div>
+          <div className="warning-banner">Date was inferred and needs confirmation</div>
         )}
 
       <div className="reason-box">
@@ -869,7 +1052,7 @@ function AssessmentCard({
       <div className="assessment-footer" onClick={(e) => e.stopPropagation()}>
         <div className="target-date-control">
           <span className="label-text">
-            🎯 Target date: {targetDate ? formatDate(targetDate) : "Not set"}
+            Target date: {targetDate ? formatDate(targetDate) : "Not set"}
           </span>
           <div className="target-date-input-group">
             <input
@@ -1013,7 +1196,7 @@ function CalendarView({
             <span className="eyebrow">ACADEMIC CALENDAR</span>
             <h2>{monthTitle}</h2>
             <p>
-              Showing official deadlines (📅) and student target preparation dates (🎯). Click any event for full details.
+              Showing official deadlines and student target preparation dates. Click any event for full details.
             </p>
           </div>
 
@@ -1084,7 +1267,7 @@ function CalendarView({
 
       {assessments.length === 0 && (
         <div className="calendar-empty-banner">
-          <span>💡</span>
+          <HelpCircleIcon size={16} />
           <span>No deadlines scheduled yet. Upload your syllabus PDF to view your academic deadlines and target study milestones on the calendar.</span>
         </div>
       )}
@@ -1128,10 +1311,10 @@ function CalendarView({
                           isCompleted ? "completed" : ""
                         }`}
                         onClick={() => onClickDetail(evt)}
-                        title={`${isTarget ? "🎯 Target:" : "📅 Due:"} ${evt.title || evt.item}`}
+                        title={`${isTarget ? "Target:" : "Due:"} ${evt.title || evt.item}`}
                       >
                         <span className="calendar-assessment-title">
-                          {isTarget ? "🎯 Target: " : "📅 "}
+                          {isTarget ? "Target: " : "Due: "}
                           {evt.title || evt.item}
                         </span>
                         <span className="calendar-assessment-meta">
@@ -1207,13 +1390,13 @@ function DailyPlanView({
 
       {assessments.length === 0 ? (
         <div className="daily-plan-empty">
-          <div className="empty-icon">⚡</div>
+          <div className="empty-icon"><ListTodoIcon size={32} /></div>
           <h3>No daily study tasks yet</h3>
           <p>Upload a course syllabus PDF to automatically generate your personalized daily study plan.</p>
         </div>
       ) : dailyTasks.length === 0 ? (
         <div className="daily-plan-empty">
-          <div className="empty-icon">🎉</div>
+          <div className="empty-icon"><CheckCircleIcon size={32} /></div>
           <h3>All caught up for today!</h3>
           <p>You have completed all urgent and prioritized syllabus tasks. Review the priority plan or calendar to prep ahead.</p>
         </div>
@@ -1240,8 +1423,8 @@ function DailyPlanView({
                     </div>
 
                     <div className="daily-plan-chips">
-                      <span className="workload-chip">⏱ {task.workloadMinutes} mins</span>
-                      <span className="weight-chip">⚖ {weight} weight</span>
+                      <span className="workload-chip"><ClockIcon size={12} /> {task.workloadMinutes} mins</span>
+                      <span className="weight-chip">{weight} weight</span>
                       <PriorityBadge status={isDone ? "completed" : task.priority_level || "unranked"} />
                     </div>
                   </div>
@@ -1267,7 +1450,7 @@ function DailyPlanView({
 
                     {task.topic && (
                       <button className="btn-daily-practice" onClick={() => onPractice(task)}>
-                        <span>✦ Practice questions</span>
+                        <span><BookIcon size={14} /> Practice questions</span>
                       </button>
                     )}
 
@@ -1360,7 +1543,7 @@ function SubjectsDashboardView({
 
       {courses.length === 0 ? (
         <div className="empty-workspace-state">
-          <div className="empty-workspace-icon">📚</div>
+          <div className="empty-workspace-icon"><BookIcon size={32} /></div>
           <h2>No subjects registered yet</h2>
           <p>Upload a course syllabus PDF to view subject breakdown, grade weight distributions, and next deadlines.</p>
         </div>
@@ -1426,7 +1609,7 @@ function SubjectsDashboardView({
                     onClick={() => onOpenPractice(sub.items[0])}
                     title="Practice first topic"
                   >
-                    ✦ Practice
+                    <BookIcon size={14} /> Practice
                   </button>
                 )}
               </div>
@@ -1540,7 +1723,7 @@ function PracticeStudioView({
     <section className="practice-studio-section">
       <div className="practice-studio-header">
         <div>
-          <span className="eyebrow">AI PRACTICE STUDIO</span>
+          <span className="eyebrow">PRACTICE QUESTIONS STUDIO</span>
           <h2>Intelligent Question Studio</h2>
           <p>
             Generate targeted academic questions, test conceptual mastery, and reveal detailed step-by-step explanations.
@@ -1641,7 +1824,7 @@ function PracticeStudioView({
               <span>Generating questions…</span>
             ) : (
               <>
-                <span>✦ Generate practice session</span>
+                <span><BookIcon size={14} /> Generate practice session</span>
                 <span>→</span>
               </>
             )}
@@ -1666,7 +1849,7 @@ function PracticeStudioView({
             </div>
           ) : error ? (
             <div className="studio-error-state">
-              <div className="error-icon">⚠️</div>
+              <div className="error-icon"><AlertTriangleIcon size={28} /></div>
               <h3>Generation failed</h3>
               <p>{error}</p>
               <button className="btn-retry" onClick={() => handleGenerate()}>
@@ -1682,7 +1865,7 @@ function PracticeStudioView({
                 </div>
 
                 <button className="btn-regenerate" onClick={() => handleGenerate()} title="Regenerate new questions">
-                  🔄 Regenerate
+                  <RefreshCwIcon size={14} /> Regenerate
                 </button>
               </div>
 
@@ -1753,7 +1936,7 @@ function PracticeStudioView({
             </div>
           ) : (
             <div className="studio-empty-state">
-              <div className="studio-empty-icon">✦</div>
+              <div className="studio-empty-icon"><FileTextIcon size={32} /></div>
               <h3>Ready to study?</h3>
               <p>
                 Select an assessment topic on the left, pick your difficulty and question format, and hit <strong>Generate practice session</strong>.
@@ -1870,7 +2053,7 @@ function ProgressDashboardView({
 
       {assessments.length === 0 ? (
         <div className="empty-workspace-state">
-          <div className="empty-workspace-icon">📊</div>
+          <div className="empty-workspace-icon"><ChartIcon size={32} /></div>
           <h2>No analytics recorded yet</h2>
           <p>Upload your course syllabus to track semester progress, grade weight completion, and subject performance.</p>
         </div>
@@ -2182,7 +2365,7 @@ function AuthModal({ isOpen, onClose, onLoginSuccess }) {
           </button>
         </div>
 
-        {error && <div className="error-banner" style={{ marginBottom: 16 }}>⚠ {error}</div>}
+        {error && <div className="error-banner" style={{ marginBottom: 16 }}>{error}</div>}
 
         <form onSubmit={handleSubmit} className="auth-form">
           {mode === "register" && (
@@ -2229,7 +2412,7 @@ function AuthModal({ isOpen, onClose, onLoginSuccess }) {
 
         <div className="auth-modal-footer">
           <button type="button" className="btn-quick-fill" onClick={handleQuickDemo}>
-            ⚡ Auto-fill test credentials
+            Auto-fill test credentials
           </button>
         </div>
       </div>
@@ -2346,7 +2529,7 @@ function StudySessionModal({
           Plan focused revision slots for course topics or milestones. Persisted directly to your workspace database.
         </p>
 
-        {formError && <div className="error-banner" style={{ marginBottom: 16 }}>⚠ {formError}</div>}
+        {formError && <div className="error-banner" style={{ marginBottom: 16 }}>{formError}</div>}
 
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="control-group">
@@ -2537,7 +2720,7 @@ function StudySessionsView({
 
       {studySessions.length === 0 ? (
         <div className="daily-plan-empty">
-          <div className="empty-icon">⏱</div>
+          <div className="empty-icon"><ClockIcon size={32} /></div>
           <h3>No study sessions scheduled yet</h3>
           <p>Schedule focused study sessions for your courses and milestones to build productive habits.</p>
           <button
@@ -2563,7 +2746,7 @@ function StudySessionsView({
                 className={`daily-plan-card ${isDone ? "completed" : ""}`}
               >
                 <div className="daily-plan-index">
-                  <span>{isDone ? "✓" : "⏱"}</span>
+                  <span>{isDone ? <CheckIcon size={14} /> : <ClockIcon size={14} />}</span>
                 </div>
 
                 <div className="daily-plan-content">
@@ -2581,12 +2764,12 @@ function StudySessionsView({
 
                     <div className="daily-plan-chips">
                       <span className="workload-chip">
-                        📅 {session.sessionDate || session.session_date}
+                        <CalendarIcon size={12} /> {session.sessionDate || session.session_date}
                         {session.startTime && ` · ${session.startTime}`}
                         {session.endTime && ` - ${session.endTime}`}
                       </span>
                       <span className="weight-chip">
-                        ⏱ {session.plannedMinutes || session.planned_minutes} mins
+                        <ClockIcon size={12} /> {session.plannedMinutes || session.planned_minutes} mins
                       </span>
                       <PriorityBadge status={isDone ? "completed" : session.status || "planned"} />
                     </div>
@@ -2707,7 +2890,7 @@ function WorkspaceModal({ isOpen, onClose, onSave, onDelete, editingWorkspace })
                 onClick={handleDeleteClick}
                 title="Permanently remove this workspace and its courses"
               >
-                {confirmDelete ? "⚠️ Click again to confirm delete" : "🗑 Delete Workspace"}
+                {confirmDelete ? "Click again to confirm delete" : "Delete Workspace"}
               </button>
             ) : <div />}
 
@@ -3414,7 +3597,7 @@ function PlannerDashboard({
               className="workspace-switcher-btn"
               onClick={() => setWorkspaceMenuOpen((prev) => !prev)}
             >
-              <span className="ws-icon">📂</span>
+              <span className="ws-icon"><FolderIcon size={15} /></span>
               <span className="ws-name">{activeWorkspace.name}</span>
               <span className="ws-caret">▾</span>
             </button>
@@ -3440,7 +3623,7 @@ function PlannerDashboard({
                         onOpenWorkspaceModal(ws);
                       }}
                     >
-                      ⚙
+                      <SettingsIcon size={14} />
                     </button>
                   </div>
                 ))}
@@ -3460,43 +3643,43 @@ function PlannerDashboard({
               className={`header-tab-btn ${activeTab === "plan" ? "active" : ""}`}
               onClick={() => setActiveTab("plan")}
             >
-              <span>▦</span> Plan
+              <GridIcon size={15} /> Plan
             </button>
             <button
               className={`header-tab-btn ${activeTab === "calendar" ? "active" : ""}`}
               onClick={() => setActiveTab("calendar")}
             >
-              <span>📅</span> Calendar
+              <CalendarIcon size={15} /> Calendar
             </button>
             <button
               className={`header-tab-btn ${activeTab === "daily" ? "active" : ""}`}
               onClick={() => setActiveTab("daily")}
             >
-              <span>⚡</span> Daily Plan
+              <ListTodoIcon size={15} /> Daily Plan
             </button>
             <button
               className={`header-tab-btn ${activeTab === "sessions" ? "active" : ""}`}
               onClick={() => setActiveTab("sessions")}
             >
-              <span>⏱</span> Sessions ({studySessions.length})
+              <ClockIcon size={15} /> Sessions ({studySessions.length})
             </button>
             <button
               className={`header-tab-btn ${activeTab === "subjects" ? "active" : ""}`}
               onClick={() => setActiveTab("subjects")}
             >
-              <span>📚</span> Subjects
+              <BookIcon size={15} /> Subjects
             </button>
             <button
               className={`header-tab-btn ${activeTab === "practice" ? "active" : ""}`}
               onClick={() => setActiveTab("practice")}
             >
-              <span>✦</span> Practice
+              <FileTextIcon size={15} /> Practice
             </button>
             <button
               className={`header-tab-btn ${activeTab === "progress" ? "active" : ""}`}
               onClick={() => setActiveTab("progress")}
             >
-              <span>📊</span> Progress
+              <ChartIcon size={15} /> Progress
             </button>
           </nav>
 
@@ -3522,10 +3705,10 @@ function PlannerDashboard({
                     </div>
                     <div className="dropdown-divider" />
                     <button className="dropdown-item" onClick={() => onOpenWorkspaceModal(activeWorkspace)}>
-                      ⚙ Workspace settings
+                      <SettingsIcon size={14} /> Workspace settings
                     </button>
                     <button className="dropdown-item" onClick={onOpenExport}>
-                      📥 Export workspace
+                      <DownloadIcon size={14} /> Export workspace
                     </button>
                     <div className="dropdown-divider" />
                     <button className="dropdown-item text-danger" onClick={onLogout}>
@@ -3536,7 +3719,7 @@ function PlannerDashboard({
               </div>
             ) : (
               <button className="btn-header-action btn-auth-pill" onClick={onOpenAuthModal}>
-                <span>👤</span> Log In / Sign Up
+                <UserIcon size={14} /> Log In / Sign Up
               </button>
             )}
 
@@ -3545,10 +3728,10 @@ function PlannerDashboard({
               onClick={() => openNewCalendarSession(new Date(), 9)}
               title="Schedule a new study session"
             >
-              ⏱ Session
+              <ClockIcon size={14} /> Session
             </button>
             <button className="btn-header-action" onClick={onOpenExport} title="Export calendar (.ics), CSV, JSON">
-              📥 Export
+              <DownloadIcon size={14} /> Export
             </button>
             <button className="upload-button" onClick={onOpenUpload}>
               <span>+</span>
@@ -3579,7 +3762,7 @@ function PlannerDashboard({
                 setPriorityFilter("all");
               }}
             >
-              <span>▦</span>
+              <GridIcon size={15} />
               Priority Plan ({counts.all})
             </button>
 
@@ -3587,7 +3770,7 @@ function PlannerDashboard({
               className={activeTab === "calendar" ? "active" : ""}
               onClick={() => setActiveTab("calendar")}
             >
-              <span>📅</span>
+              <CalendarIcon size={15} />
               Weekly Calendar
             </button>
 
@@ -3595,7 +3778,7 @@ function PlannerDashboard({
               className={activeTab === "daily" ? "active" : ""}
               onClick={() => setActiveTab("daily")}
             >
-              <span>⚡</span>
+              <ListTodoIcon size={15} />
               Daily Study Plan
             </button>
 
@@ -3603,7 +3786,7 @@ function PlannerDashboard({
               className={activeTab === "sessions" ? "active" : ""}
               onClick={() => setActiveTab("sessions")}
             >
-              <span>⏱</span>
+              <ClockIcon size={15} />
               Study Sessions ({studySessions.length})
             </button>
 
@@ -3611,7 +3794,7 @@ function PlannerDashboard({
               className={activeTab === "subjects" ? "active" : ""}
               onClick={() => setActiveTab("subjects")}
             >
-              <span>📚</span>
+              <BookIcon size={15} />
               Subjects Dashboard ({courses.length})
             </button>
 
@@ -3619,7 +3802,7 @@ function PlannerDashboard({
               className={activeTab === "practice" ? "active" : ""}
               onClick={() => setActiveTab("practice")}
             >
-              <span>✦</span>
+              <FileTextIcon size={15} />
               Practice Studio
             </button>
 
@@ -3627,7 +3810,7 @@ function PlannerDashboard({
               className={activeTab === "progress" ? "active" : ""}
               onClick={() => setActiveTab("progress")}
             >
-              <span>📊</span>
+              <ChartIcon size={15} />
               Progress & Analytics
             </button>
 
@@ -3640,7 +3823,7 @@ function PlannerDashboard({
                 setPriorityFilter("overdue");
               }}
             >
-              <span>!</span>
+              <AlertTriangleIcon size={14} />
               Overdue Tasks ({counts.overdue})
             </button>
 
@@ -3651,7 +3834,7 @@ function PlannerDashboard({
                 setPriorityFilter("urgent");
               }}
             >
-              <span>↗</span>
+              <TargetIcon size={14} />
               Urgent Tasks ({counts.urgent})
             </button>
 
@@ -3662,7 +3845,7 @@ function PlannerDashboard({
                 setPriorityFilter("completed");
               }}
             >
-              <span>✓</span>
+              <CheckCircleIcon size={14} />
               Completed ({counts.completed})
             </button>
           </nav>
@@ -3723,7 +3906,7 @@ function PlannerDashboard({
               </div>
               <div className="date-chip">{todayStr}</div>
               <span className="method-tag">
-                {currentUser ? "☁ Cloud Synced · PostgreSQL" : "⚡ Local Workspace Mode"}
+                {currentUser ? "Cloud Synced · PostgreSQL" : "Local Workspace Mode"}
               </span>
             </div>
           </div>
@@ -3733,11 +3916,11 @@ function PlannerDashboard({
             <StatCard
               value={courseFilter === "all" ? subjectOptions.length : 1}
               label={courseFilter === "all" ? "Subjects" : "Selected Subject"}
-              icon="▦"
+              icon={<BookIcon size={18} />}
             />
-            <StatCard value={counts.all} label="Assessments" icon="✓" />
-            <StatCard value={studySessions.length} label="Study Sessions" icon="⏱" />
-            <StatCard value={counts.completed} label="Completed" icon="✓" />
+            <StatCard value={counts.all} label="Assessments" icon={<FileTextIcon size={18} />} />
+            <StatCard value={studySessions.length} label="Study Sessions" icon={<ClockIcon size={18} />} />
+            <StatCard value={counts.completed} label="Completed" icon={<CheckCircleIcon size={18} />} />
             <StatCard
               value={`${progressPercent}%`}
               label="Plan completed"
@@ -3831,7 +4014,7 @@ function PlannerDashboard({
           {activeTab === "plan" && (
             assessments.length === 0 ? (
               <div className="empty-workspace-state">
-                <div className="empty-workspace-icon">📂</div>
+                <div className="empty-workspace-icon"><FolderIcon size={32} /></div>
                 <h2>Your workspace is empty</h2>
                 <p>
                   No course syllabus has been uploaded yet. Upload your syllabus PDF to automatically extract subjects, deadlines, grade weightings, and prioritized study recommendations.
@@ -4426,7 +4609,7 @@ function LandingPage({
                 onDrop={handleDrop}
                 onClick={() => fileInputRef.current?.click()}
               >
-                <div className="dropzone-icon">📄</div>
+                <div className="dropzone-icon"><UploadCloudIcon size={40} /></div>
                 <div className="dropzone-title">Drag and drop your PDF here</div>
                 <div className="dropzone-subtitle">or click to browse from your device</div>
                 <button
@@ -4445,7 +4628,7 @@ function LandingPage({
               {selectedFile && (
                 <div className="selected-file-info">
                   <div className="file-details">
-                    <span className="file-icon">📑</span>
+                    <span className="file-icon"><FileTextIcon size={20} /></span>
                     <div>
                       <strong>{selectedFile.name}</strong>
                       <span>{formatFileSize(selectedFile.size)}</span>
@@ -4457,7 +4640,7 @@ function LandingPage({
                 </div>
               )}
 
-              {error && <div className="error-banner" style={{ marginTop: 16 }}>⚠ {error}</div>}
+              {error && <div className="error-banner" style={{ marginTop: 16 }}>{error}</div>}
             </>
           )}
         </div>
@@ -4476,7 +4659,7 @@ function LandingPage({
 
         <div className="feature-grid">
           <div className="feature-card">
-            <div className="feature-icon purple">◎</div>
+            <div className="feature-icon purple"><LayersIcon size={22} /></div>
             <h3>Grade-aware priorities</h3>
             <p>
               Ranks assessments using both deadline urgency and impact on your final grade.
@@ -4484,7 +4667,7 @@ function LandingPage({
           </div>
 
           <div className="feature-card">
-            <div className="feature-icon orange">⚡</div>
+            <div className="feature-icon orange"><ListTodoIcon size={22} /></div>
             <h3>Daily study planner</h3>
             <p>
               Generates an actionable daily study queue with estimated minutes and explicit reasoning.
@@ -4492,7 +4675,7 @@ function LandingPage({
           </div>
 
           <div className="feature-card">
-            <div className="feature-icon green">✦</div>
+            <div className="feature-icon green"><BookIcon size={22} /></div>
             <h3>Practice question studio</h3>
             <p>
               Generates targeted practice questions with difficulty tiers, multiple choice options, and answer explanations.
@@ -4500,7 +4683,7 @@ function LandingPage({
           </div>
 
           <div className="feature-card">
-            <div className="feature-icon blue">📅</div>
+            <div className="feature-icon blue"><CalendarIcon size={22} /></div>
             <h3>Academic calendar & .ics</h3>
             <p>
               Syncs deadlines and target dates directly with Google Calendar, Apple Calendar, and Outlook.
@@ -5442,7 +5625,7 @@ export default function App() {
             <div className="export-options-grid">
               <div className="export-option-card" onClick={handleExportICS}>
                 <div className="export-option-info">
-                  <strong>Calendar File (.ics) 📅</strong>
+                  <strong>Calendar File (.ics)</strong>
                   <span>Import official due dates & target preparation dates into Google Calendar, Apple Calendar, or Outlook.</span>
                 </div>
                 <button className="export-btn-action">Download .ics</button>
@@ -5450,7 +5633,7 @@ export default function App() {
 
               <div className="export-option-card" onClick={handleExportCSV}>
                 <div className="export-option-info">
-                  <strong>Spreadsheet (.csv) 📊</strong>
+                  <strong>Spreadsheet (.csv)</strong>
                   <span>Tabular export formatted for Excel, Google Sheets, or Notion database imports.</span>
                 </div>
                 <button className="export-btn-action">Download CSV</button>
@@ -5458,7 +5641,7 @@ export default function App() {
 
               <div className="export-option-card" onClick={handleExportJSON}>
                 <div className="export-option-info">
-                  <strong>Workspace Backup (.json) 💾</strong>
+                  <strong>Workspace Backup (.json)</strong>
                   <span>Complete raw structured data with courses, items, target dates, and completion status.</span>
                 </div>
                 <button className="export-btn-action">Download JSON</button>
@@ -5466,7 +5649,7 @@ export default function App() {
 
               <div className="export-option-card" onClick={handlePrintPlan}>
                 <div className="export-option-info">
-                  <strong>Printable Semester Report 🖨</strong>
+                  <strong>Printable Semester Report</strong>
                   <span>Clean physical print layout for study binders and desk calendars.</span>
                 </div>
                 <button className="export-btn-action">Print report</button>
@@ -5481,7 +5664,7 @@ export default function App() {
         <div className="modal-overlay" onClick={() => setResetModalOpen(false)}>
           <div className="modal-card" style={{ maxWidth: 480 }} onClick={(e) => e.stopPropagation()}>
             <div className="reset-modal-content">
-              <div className="reset-modal-icon">⚠️</div>
+              <div className="reset-modal-icon"><AlertTriangleIcon size={28} /></div>
               <h3>Reset this workspace?</h3>
               <p>
                 This will remove the current syllabus, target dates, completion states, and generated plan from this browser.
