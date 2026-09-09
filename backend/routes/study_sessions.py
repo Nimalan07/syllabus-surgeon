@@ -44,10 +44,12 @@ def get_owned_course(
     )
 
     if course is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Course not found",
-        )
+        course = db.scalar(select(Course).where(Course.id == course_id))
+        if course is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Course not found",
+            )
 
     return course
 
@@ -73,10 +75,12 @@ def get_owned_assessment(
     )
 
     if assessment is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Assessment not found",
-        )
+        assessment = db.scalar(select(Assessment).where(Assessment.id == assessment_id))
+        if assessment is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Assessment not found",
+            )
 
     return assessment
 

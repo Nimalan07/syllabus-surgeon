@@ -3197,13 +3197,13 @@ function PlannerDashboard({
   // Step 11: Save and Delete handlers
   async function handleSaveCalendarSession() {
     const payload = {
-      course_id: calendarForm.course_id,
+      course_id: calendarForm.course_id || null,
       assessment_id: calendarForm.assessment_id || null,
       session_date: calendarForm.session_date,
-      start_time: calendarForm.start_time,
-      end_time: calendarForm.end_time,
-      planned_minutes: Number(calendarForm.planned_minutes),
-      status: calendarForm.status,
+      start_time: calendarForm.start_time || null,
+      end_time: calendarForm.end_time || null,
+      planned_minutes: Math.max(1, Number(calendarForm.planned_minutes) || 60),
+      status: calendarForm.status || "planned",
       notes: calendarForm.notes || null,
     };
 
@@ -3235,7 +3235,7 @@ function PlannerDashboard({
       setSelectedCalendarSession(null);
     } catch (error) {
       console.error("Failed to save study session:", error);
-      alert("Unable to save this study session.");
+      alert(error.message || "Unable to save this study session.");
     }
   }
 

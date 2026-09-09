@@ -41,9 +41,18 @@ export async function request(path, options = {}) {
   if (!response.ok) {
     const errorBody = await response.json().catch(() => ({}));
 
-    throw new Error(
-      errorBody.detail || `Request failed with status ${response.status}`
-    );
+    let errorMessage = `Request failed with status ${response.status}`;
+    if (typeof errorBody.detail === "string") {
+      errorMessage = errorBody.detail;
+    } else if (Array.isArray(errorBody.detail)) {
+      errorMessage = errorBody.detail
+        .map((err) => (err.msg ? `${err.loc?.slice(-1)[0] || "field"}: ${err.msg}` : JSON.stringify(err)))
+        .join("; ");
+    } else if (errorBody.message) {
+      errorMessage = errorBody.message;
+    }
+
+    throw new Error(errorMessage);
   }
 
   if (response.status === 204) {
