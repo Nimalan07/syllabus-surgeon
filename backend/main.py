@@ -21,6 +21,18 @@ def ensure_database_schema():
                             conn.exec_driver_sql("ALTER TABLE users ADD COLUMN password_hash VARCHAR(255)")
                             if "hashed_password" in col_names:
                                 conn.exec_driver_sql("UPDATE users SET password_hash = hashed_password WHERE password_hash IS NULL")
+
+                    if "study_sessions" in tables:
+                        info = conn.exec_driver_sql("PRAGMA table_info(study_sessions)").fetchall()
+                        col_names = [col[1] for col in info]
+                        if "course_id" not in col_names:
+                            conn.exec_driver_sql("ALTER TABLE study_sessions ADD COLUMN course_id CHAR(32)")
+                        if "updated_at" not in col_names:
+                            conn.exec_driver_sql("ALTER TABLE study_sessions ADD COLUMN updated_at DATETIME")
+                        if "workspace_id" not in col_names:
+                            conn.exec_driver_sql("ALTER TABLE study_sessions ADD COLUMN workspace_id CHAR(32)")
+                        if "assessment_id" not in col_names:
+                            conn.exec_driver_sql("ALTER TABLE study_sessions ADD COLUMN assessment_id CHAR(32)")
                 except Exception as ex:
                     print(f"SQLite migration notice: {ex}")
             elif dialect == "postgresql":
@@ -34,6 +46,15 @@ def ensure_database_schema():
                                 END IF;
                                 IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'hashed_password') THEN
                                     UPDATE users SET password_hash = hashed_password WHERE password_hash IS NULL;
+                                END IF;
+                            END IF;
+
+                            IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'study_sessions') THEN
+                                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'study_sessions' AND column_name = 'course_id') THEN
+                                    ALTER TABLE study_sessions ADD COLUMN course_id UUID;
+                                END IF;
+                                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'study_sessions' AND column_name = 'updated_at') THEN
+                                    ALTER TABLE study_sessions ADD COLUMN updated_at TIMESTAMP WITH TIME ZONE;
                                 END IF;
                             END IF;
                         END $$;
