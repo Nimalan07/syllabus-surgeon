@@ -6,11 +6,44 @@ from core.config import settings
 from core.database import Base, engine
 from routes import assessments, auth, courses, questions, study_sessions, upload, workspaces
 
-# Automatically create tables in database (PostgreSQL / SQLite fallback)
-try:
-    Base.metadata.create_all(bind=engine)
-except Exception as e:
-    print(f"Warning during DB table creation: {e}")
+def ensure_database_schema():
+    try:
+        Base.metadata.create_all(bind=engine)
+        with engine.begin() as conn:
+            dialect = engine.dialect.name
+            if dialect == "sqlite":
+                try:
+                    tables = [t[0] for t in conn.exec_driver_sql("SELECT name FROM sqlite_master WHERE type='table'").fetchall()]
+                    if "users" in tables:
+                        info = conn.exec_driver_sql("PRAGMA table_info(users)").fetchall()
+                        col_names = [col[1] for col in info]
+                        if "password_hash" not in col_names:
+                            conn.exec_driver_sql("ALTER TABLE users ADD COLUMN password_hash VARCHAR(255)")
+                            if "hashed_password" in col_names:
+                                conn.exec_driver_sql("UPDATE users SET password_hash = hashed_password WHERE password_hash IS NULL")
+                except Exception as ex:
+                    print(f"SQLite migration notice: {ex}")
+            elif dialect == "postgresql":
+                try:
+                    conn.exec_driver_sql("""
+                        DO $$
+                        BEGIN
+                            IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'users') THEN
+                                IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'password_hash') THEN
+                                    ALTER TABLE users ADD COLUMN password_hash VARCHAR(255);
+                                END IF;
+                                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'hashed_password') THEN
+                                    UPDATE users SET password_hash = hashed_password WHERE password_hash IS NULL;
+                                END IF;
+                            END IF;
+                        END $$;
+                    """)
+                except Exception as ex:
+                    print(f"PostgreSQL migration notice: {ex}")
+    except Exception as e:
+        print(f"Warning during DB table creation: {e}")
+
+ensure_database_schema()
 
 app = FastAPI(
     title=settings.app_name,
