@@ -1,6 +1,8 @@
-# 🩺 Syllabus Surgeon
-
 <div align="center">
+
+<img src="frontend/src/assets/logo.png" alt="Syllabus Surgeon Logo" width="100" style="border-radius: 16px; margin-bottom: 12px;" />
+
+# 🩺 Syllabus Surgeon
 
 ![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)
 ![React](https://img.shields.io/badge/React_19-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
