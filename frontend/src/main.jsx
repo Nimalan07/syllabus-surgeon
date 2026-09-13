@@ -29,6 +29,7 @@ import {
   deleteStudySession,
 } from "./api.js";
 import { normalizeAssessment, normalizeStudySession } from "./dataTransform.js";
+import appLogo from "./assets/logo.png";
 import "./styles.css";
 
 /* Generic Standard SVG Icons */
@@ -3587,7 +3588,7 @@ function PlannerDashboard({
       <div className="dashboard-header-wrapper">
         <header className="dashboard-header">
           <div className="brand" onClick={onViewLanding}>
-            <span className="brand-mark">S</span>
+            <img src={appLogo} alt="Syllabus Surgeon Logo" className="brand-logo" />
             <span>Syllabus Surgeon</span>
           </div>
 
@@ -4394,7 +4395,7 @@ function LandingPage({
       <section className="hero-section">
         <nav className="site-nav">
           <div className="brand" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
-            <span className="brand-mark">S</span>
+            <img src={appLogo} alt="Syllabus Surgeon Logo" className="brand-logo" />
             <span>Syllabus Surgeon</span>
           </div>
 
@@ -4506,7 +4507,7 @@ function LandingPage({
             <div className="preview-window">
               <div className="preview-header">
                 <div className="preview-brand">
-                  <span className="brand-mark small">S</span>
+                  <img src={appLogo} alt="Syllabus Surgeon Logo" className="brand-logo small" />
                   <span>Syllabus Surgeon</span>
                 </div>
                 <span className="preview-menu">•••</span>

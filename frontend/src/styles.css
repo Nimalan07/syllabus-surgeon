@@ -132,11 +132,32 @@ a {
   box-shadow: 0 4px 12px rgba(104, 69, 216, 0.3);
 }
 
+.brand-logo {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(104, 69, 216, 0.25);
+  display: block;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.brand:hover .brand-logo {
+  transform: scale(1.06);
+}
+
 .brand-mark.small {
   width: 26px;
   height: 26px;
   border-radius: 7px;
   font-size: 13px;
+}
+
+.brand-logo.small {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  box-shadow: 0 2px 8px rgba(104, 69, 216, 0.2);
 }
 
 .nav-links {
