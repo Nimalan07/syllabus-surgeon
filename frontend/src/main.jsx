@@ -4033,21 +4033,6 @@ function PlannerDashboard({
 
                 <AssessmentTimingSummary assessments={assessments} />
 
-                {/* Step 11: Weekly Calendar */}
-                <WeeklyCalendar
-                  weekStart={calendarWeekStart}
-                  sessions={studySessions}
-                  courses={courses}
-                  assessments={assessments}
-                  onPreviousWeek={() => moveCalendarWeek(-1)}
-                  onNextWeek={() => moveCalendarWeek(1)}
-                  onToday={() =>
-                    setCalendarWeekStart(getStartOfWeek(new Date()))
-                  }
-                  onCreateSession={openNewCalendarSession}
-                  onEditSession={openEditCalendarSession}
-                />
-
                 {/* Filters & Search Toolbar */}
                 <div className="filters-container">
                   <div className="filters-top-row">
